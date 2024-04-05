@@ -26,12 +26,14 @@ impl<'a> Lexer<'a> {
     }
 
     pub fn process(&mut self) {
-        while self.peek_char().is_some() { 
+        while self.peek_char().is_some() {
+            self.clear_whitespace();
             self.tokenize_next();
         }
     }
 
     fn tokenize_next(&mut self) {
+        assert!(self.peek_char().is_some());
         let c = self.peek_char().unwrap();
         if c.is_numeric() {
             self.tokenize_number();
@@ -43,23 +45,46 @@ impl<'a> Lexer<'a> {
     }
 
     fn tokenize_number(&mut self) {
-        let raw = self.tokenize_while(|c| c.is_numeric());
+        assert!(self.peek_char().is_some());
+        let (start, end) = self.tokenize_while(|c| c.is_numeric());
         self.tokens.push_back(Token{
             tag: TokenTag::Number,
-            raw,
+            raw: &self.source[start..end],
         })
     }
 
     fn tokenize_identifier(&mut self) {
-        let raw = self.tokenize_while(|c| c.is_numeric());
-        let token = Token{
+        assert!(self.peek_char().is_some());
+        let (start, end) = self.tokenize_while(|c| c.is_numeric());
+        self.tokens.push_back(Token{
             tag: TokenTag::Number,
-            raw,
-        };
-        self.tokens.push_back(token);
+            raw: &self.source[start..end],
+        });
     }
 
-    fn tokenize_while(&mut self, func: impl Fn(char) -> bool) -> &str {
+    fn tokenize_special(&mut self) {
+        assert!(self.peek_char().is_some());
+        let start = self.index;
+        let first = self.eat_char().unwrap();
+        let tag = match first {
+            '(' => TokenTag::LParen,
+            ')' => TokenTag::RParen,
+            '{' => TokenTag::LCurly,
+            '}' => TokenTag::RCurly,
+            _ => panic!("Unrecognized character: '{first}'"),
+        };
+        let end = self.index;
+        self.tokens.push_back(Token{
+            tag,
+            raw: &self.source[start..end],
+        })
+    }
+    
+    fn clear_whitespace(&mut self) {
+        self.tokenize_while(|c| c.is_whitespace());
+    }
+
+    fn tokenize_while(&mut self, func: impl Fn(char) -> bool) -> (usize, usize) {
         let start = self.index;
         while let Some(c) = self.peek_char() {
             if !func(c) {
@@ -68,7 +93,7 @@ impl<'a> Lexer<'a> {
             self.eat_char();
         }
         let end = self.index;
-        return &self.source[start..end];
+        (start, end)
     }
 
     fn peek_char(&self) -> Option<char> {

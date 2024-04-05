@@ -3,5 +3,5 @@ mod lexer;
 mod parser;
 
 fn main() {
-    println!("Hello, world!");
+    let test_source = "test klas 721317 () (){} tes}";
 }
