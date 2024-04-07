@@ -1,8 +1,8 @@
-use std::collections::VecDeque;
 use crate::token::{Token, TokenTag};
+use std::collections::VecDeque;
 
 #[derive(Debug)]
-struct Lexer<'a> {
+pub struct Lexer<'a> {
     source: &'a str,
     index: usize,
     tokens: VecDeque<Token<'a>>,
@@ -47,7 +47,7 @@ impl<'a> Lexer<'a> {
     fn tokenize_number(&mut self) {
         assert!(self.peek_char().is_some());
         let (start, end) = self.tokenize_while(|c| c.is_numeric());
-        self.tokens.push_back(Token{
+        self.tokens.push_back(Token {
             tag: TokenTag::Number,
             raw: &self.source[start..end],
         })
@@ -55,8 +55,8 @@ impl<'a> Lexer<'a> {
 
     fn tokenize_identifier(&mut self) {
         assert!(self.peek_char().is_some());
-        let (start, end) = self.tokenize_while(|c| c.is_numeric());
-        self.tokens.push_back(Token{
+        let (start, end) = self.tokenize_while(|c| c.is_alphabetic() || c == '_');
+        self.tokens.push_back(Token {
             tag: TokenTag::Number,
             raw: &self.source[start..end],
         });
@@ -74,12 +74,12 @@ impl<'a> Lexer<'a> {
             _ => panic!("Unrecognized character: '{first}'"),
         };
         let end = self.index;
-        self.tokens.push_back(Token{
+        self.tokens.push_back(Token {
             tag,
             raw: &self.source[start..end],
         })
     }
-    
+
     fn clear_whitespace(&mut self) {
         self.tokenize_while(|c| c.is_whitespace());
     }
@@ -88,7 +88,7 @@ impl<'a> Lexer<'a> {
         let start = self.index;
         while let Some(c) = self.peek_char() {
             if !func(c) {
-                break
+                break;
             }
             self.eat_char();
         }
