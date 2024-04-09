@@ -8,8 +8,28 @@ pub const TokenTag = enum {
     l_curly,
     r_curly,
     comma,
+    period,
     semicolon,
+    minus,
+    minus_minus,
+    minus_equals,
+    plus,
+    plus_plus,
+    plus_equals,
+    equals,
+    equals_equals,
+    less_than,
+    less_than_equals,
+    greater_than,
+    greater_than_equals,
+    keyword_var,
+    keyword_if,
 };
+
+const keyword_lookup = std.ComptimeStringMap(TokenTag, .{
+    .{ "var", TokenTag.keyword_var },
+    .{ "if", TokenTag.keyword_if },
+});
 
 pub const Token = struct {
     tag: TokenTag,
@@ -107,22 +127,57 @@ pub const Lexer = struct {
             _ = self.nextChar();
         }
         const end = self.index;
-        try self.pushToken(Token{ .tag = .identifier, .start = start, .end = end, .line = self.line, .col = self.col });
+        const tag = if (keyword_lookup.get(self.source[start..end])) |keyword| keyword else TokenTag.identifier;
+        try self.pushToken(Token{ .tag = tag, .start = start, .end = end, .line = self.line, .col = self.col });
     }
 
     fn tokenizeSpecial(self: *Lexer) LexerError!void {
         std.debug.assert(self.peekChar() != null);
         const start = self.index;
         const char = self.nextChar().?;
-        const tag: TokenTag = switch (char) {
-            '(' => .l_paren,
-            ')' => .r_paren,
-            '{' => .l_curly,
-            '}' => .r_curly,
-            ',' => .comma,
-            ';' => .semicolon,
+        var tag: TokenTag = undefined;
+        switch (char) {
+            '(' => tag = .l_paren,
+            ')' => tag = .r_paren,
+            '{' => tag = .l_curly,
+            '}' => tag = .r_curly,
+            ',' => tag = .comma,
+            '.' => tag = .period,
+            '+' => if (self.peekChar()) |c| {
+                switch (c) {
+                    '+' => { _ = self.nextChar(); tag = .plus_plus; },
+                    '=' => { _ = self.nextChar(); tag = .plus_equals; },
+                    else => tag = .plus,
+                }
+            },
+            '-' => if (self.peekChar()) |c| {
+                switch (c) {
+                    '-' => { _ = self.nextChar(); tag = .minus_minus; },
+                    '=' => { _ = self.nextChar(); tag = .minus_equals; },
+                    else => tag = .minus,
+                }
+            },
+            '=' => if (self.peekChar()) |c| {
+                switch (c) {
+                    '=' => { _ = self.nextChar(); tag = .equals_equals; },
+                    else => tag = .equals,
+                }
+            },
+            '<' => if (self.peekChar()) |c| {
+                switch (c) {
+                    '=' => { _ = self.nextChar(); tag = .less_than_equals; },
+                    else => tag = .less_than,
+                }
+            },
+            '>' => if (self.peekChar()) |c| {
+                switch (c) {
+                    '=' => { _ = self.nextChar(); tag = .greater_than_equals; },
+                    else => tag = .greater_than,
+                }
+            },
+            ';' => tag = .semicolon,
             else => return LexerError.UnexpectedCharacter,
-        };
+        }
         const end = self.index;
         try self.pushToken(Token{ .tag = tag, .start = start, .end = end, .line = self.line, .col = self.col });
     }

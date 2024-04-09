@@ -4,7 +4,7 @@ const lexer = @import("lexer.zig");
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     var allocator = gpa.allocator();
-    const str = "test etst828 __8 328 3281 ( 0 138) {}";
+    const str = "test +=e tst828- --__8 <=328 < 3281 v a a var( 0 138) {}";
     var lex = lexer.Lexer.init(&allocator, str);
     try lex.tokenize();
     while (lex.queue.popFirst()) |node| {
