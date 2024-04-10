@@ -39,7 +39,7 @@ pub const Token = struct {
     col: usize,
 };
 
-pub const LexerError = error {
+pub const LexerError = error{
     UnexpectedCharacter,
 } || std.mem.Allocator.Error;
 
@@ -145,33 +145,54 @@ pub const Lexer = struct {
             '.' => tag = .period,
             '+' => if (self.peekChar()) |c| {
                 switch (c) {
-                    '+' => { _ = self.nextChar(); tag = .plus_plus; },
-                    '=' => { _ = self.nextChar(); tag = .plus_equals; },
+                    '+' => {
+                        _ = self.nextChar();
+                        tag = .plus_plus;
+                    },
+                    '=' => {
+                        _ = self.nextChar();
+                        tag = .plus_equals;
+                    },
                     else => tag = .plus,
                 }
             },
             '-' => if (self.peekChar()) |c| {
                 switch (c) {
-                    '-' => { _ = self.nextChar(); tag = .minus_minus; },
-                    '=' => { _ = self.nextChar(); tag = .minus_equals; },
+                    '-' => {
+                        _ = self.nextChar();
+                        tag = .minus_minus;
+                    },
+                    '=' => {
+                        _ = self.nextChar();
+                        tag = .minus_equals;
+                    },
                     else => tag = .minus,
                 }
             },
             '=' => if (self.peekChar()) |c| {
                 switch (c) {
-                    '=' => { _ = self.nextChar(); tag = .equals_equals; },
+                    '=' => {
+                        _ = self.nextChar();
+                        tag = .equals_equals;
+                    },
                     else => tag = .equals,
                 }
             },
             '<' => if (self.peekChar()) |c| {
                 switch (c) {
-                    '=' => { _ = self.nextChar(); tag = .less_than_equals; },
+                    '=' => {
+                        _ = self.nextChar();
+                        tag = .less_than_equals;
+                    },
                     else => tag = .less_than,
                 }
             },
             '>' => if (self.peekChar()) |c| {
                 switch (c) {
-                    '=' => { _ = self.nextChar(); tag = .greater_than_equals; },
+                    '=' => {
+                        _ = self.nextChar();
+                        tag = .greater_than_equals;
+                    },
                     else => tag = .greater_than,
                 }
             },

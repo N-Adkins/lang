@@ -12,7 +12,7 @@ pub fn main() !void {
 
     try lex.tokenize();
     while (lex.queue.popFirst()) |node| {
-        std.debug.print("Raw: \"{s}\", {any}\n", .{str[node.data.start..node.data.end], node.data});
+        std.debug.print("Raw: \"{s}\", {any}\n", .{ str[node.data.start..node.data.end], node.data });
         allocator.destroy(node);
     }
 }

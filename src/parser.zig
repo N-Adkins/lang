@@ -1,9 +1,7 @@
 const std = @import("std");
 const lexer = @import("lexer.zig");
 
-pub const ParseError = error {
-    
-} || std.mem.Allocator.Error;
+pub const ParseError = error{} || std.mem.Allocator.Error;
 
 pub const Expression = union(enum) {
     number_constant: i64,
@@ -23,7 +21,7 @@ pub const Expression = union(enum) {
             .call => |call| {
                 call.args.deinit();
                 call.callee.deinit(allocator);
-            }
+            },
         }
     }
 };
@@ -37,13 +35,14 @@ pub const Statement = union(enum) {
             .variable_decl => |decl| {
                 allocator.free(decl.name);
                 decl.value.deinit(allocator);
-            }
+            },
         }
     }
 };
 
 pub const Block = struct {
     statements: std.ArrayList(Statement),
+
     pub fn init(allocator: *std.mem.Allocator) Block {
         return Block{
             .statements = std.ArrayList(Statement).init(allocator),
@@ -51,7 +50,7 @@ pub const Block = struct {
     }
 
     pub fn deinit(self: *Block) void {
-        self.statements.deinit(); 
+        self.statements.deinit();
     }
 };
 
