@@ -1,5 +1,6 @@
 const std = @import("std");
 const lexer = @import("lexer.zig");
+const parser = @import("parser.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -11,8 +12,13 @@ pub fn main() !void {
     defer lex.deinit();
 
     try lex.tokenize();
-    while (lex.queue.popFirst()) |node| {
-        std.debug.print("Raw: \"{s}\", {any}\n", .{ str[node.data.start..node.data.end], node.data });
-        allocator.destroy(node);
-    }
+    //while (lex.queue.popFirst()) |node| {
+    //      std.debug.print("Raw: \"{s}\", {any}\n", .{ str[node.data.start..node.data.end], node.data });
+    //      allocator.destroy(node);
+    //}
+    
+    var parse = parser.Parser.init(&lex, &allocator);
+    defer parse.deinit();
+
+    try parse.parse();
 }
