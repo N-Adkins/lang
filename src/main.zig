@@ -4,6 +4,7 @@ const parser = @import("parser.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
     var allocator = gpa.allocator();
 
     const str = "var test = 0;";
