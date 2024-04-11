@@ -6,7 +6,7 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     var allocator = gpa.allocator();
 
-    const str = "test +=e tst828- --__8 <=328 < 3281 v a a var( 0 138) {}";
+    const str = "var test = 0;";
 
     var lex = lexer.Lexer.init(&allocator, str);
     defer lex.deinit();

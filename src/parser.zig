@@ -16,7 +16,7 @@ pub const Expression = union(enum) {
         switch (self.*) {
             .number_constant => {},
             .variable_get => |*variable| {
-                allocator.free(variable);
+                allocator.free(variable.*);
             },
             .function_decl => |*func| {
                 for (func.args.items) |arg| {
@@ -112,20 +112,20 @@ pub const Parser = struct {
 
     fn parseVarGet(self: *Parser) ParseError!*Expression {
         const identifier = try self.expectToken(.identifier);
-        var expression = try self.allocator.create(Expression);
+        const expression = try self.allocator.create(Expression);
         errdefer self.allocator.destroy(expression);
-        expression.variable_get = try self.allocator.dupe(u8, self.lexer.source[identifier.start..identifier.end]);
+        expression.* = .{ .variable_get = try self.allocator.dupe(u8, self.lexer.source[identifier.start..identifier.end]) };
         return expression;
     }
 
     fn parseNumberConstant(self: *Parser) ParseError!*Expression {
         const number = try self.expectToken(.number);
-        var expression = try self.allocator.create(Expression);
-        expression.number_constant = std.fmt.parseInt(
+        const expression = try self.allocator.create(Expression);
+        expression.* = .{ .number_constant = std.fmt.parseInt(
             @TypeOf(expression.number_constant),
             self.lexer.source[number.start..number.end],
             10,
-        ) catch 0;
+        ) catch 0, };
         return expression;
     }
 
@@ -150,12 +150,12 @@ pub const Parser = struct {
         const identifier = try self.expectToken(.identifier);
         _ = try self.expectToken(.equals);
         const expression = try self.parseExpression();
-        var statement = try self.allocator.create(Statement);
+        const statement = try self.allocator.create(Statement);
         errdefer self.allocator.destroy(statement);
-        statement.variable_decl = .{
+        statement.* = .{ .variable_decl = .{
             .name = try self.allocator.dupe(u8, self.lexer.source[identifier.start..identifier.end]),
             .value = expression,
-        };
+        } };
         return statement;
     }
 
