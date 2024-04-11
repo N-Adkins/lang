@@ -1,7 +1,7 @@
 const std = @import("std");
 const lexer = @import("lexer.zig");
 
-pub const ParseError = error {
+pub const ParseError = error{
     UnexpectedToken,
     UnexpectedEnd,
 } || std.mem.Allocator.Error;
@@ -46,7 +46,7 @@ pub const Statement = union(enum) {
             },
             .block => |*block| {
                 block.deinit(allocator);
-            }
+            },
         }
         allocator.destroy(self);
     }
@@ -122,7 +122,7 @@ pub const Parser = struct {
         const number = try self.expectToken(.number);
         var expression = try self.allocator.create(Expression);
         expression.number_constant = std.fmt.parseInt(
-            @TypeOf(expression.number_constant), 
+            @TypeOf(expression.number_constant),
             self.lexer.source[number.start..number.end],
             10,
         ) catch 0;
@@ -152,7 +152,7 @@ pub const Parser = struct {
         const expression = try self.parseExpression();
         var statement = try self.allocator.create(Statement);
         errdefer self.allocator.destroy(statement);
-        statement.variable_decl = .{ 
+        statement.variable_decl = .{
             .name = try self.allocator.dupe(u8, self.lexer.source[identifier.start..identifier.end]),
             .value = expression,
         };

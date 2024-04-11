@@ -16,7 +16,7 @@ pub fn main() !void {
     //      std.debug.print("Raw: \"{s}\", {any}\n", .{ str[node.data.start..node.data.end], node.data });
     //      allocator.destroy(node);
     //}
-    
+
     var parse = parser.Parser.init(&lex, &allocator);
     defer parse.deinit();
 
