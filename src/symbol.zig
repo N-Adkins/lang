@@ -10,12 +10,12 @@ pub const SymbolError = error{
 pub const SymbolTable = struct {
     parent: ?*SymbolTable,
     table: std.StringHashMap(types.Type),
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
 
-    pub fn init(parent: ?*SymbolTable, allocator: *std.mem.Allocator) SymbolTable {
+    pub fn init(parent: ?*SymbolTable, allocator: std.mem.Allocator) SymbolTable {
         return SymbolTable{
             .parent = parent,
-            .table = std.StringHashMap(types.Type).init(allocator.*),
+            .table = std.StringHashMap(types.Type).init(allocator),
             .allocator = allocator,
         };
     }
@@ -55,14 +55,14 @@ pub const SymbolTable = struct {
             value.* = symbol_type;
             return;
         }
-        
+
         const duped_symbol = try self.allocator.dupe(u8, symbol);
         try self.table.put(duped_symbol, symbol_type);
     }
 };
 
 pub fn checkSymbols(root: *ast.Block) SymbolError!void {
-    return checkBlock(root); 
+    return checkBlock(root);
 }
 
 fn checkExpression(scope: *ast.Block, expr: *ast.Expression) SymbolError!void {

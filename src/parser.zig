@@ -9,18 +9,18 @@ pub const ParseError = error{
 
 pub const Parser = struct {
     lexer: *lexer.Lexer,
-    allocator: *std.mem.Allocator,
     root: ast.Block,
     current_scope: *ast.Block,
     current: ?lexer.Token = null,
     previous: ?lexer.Token = null,
+    allocator: std.mem.Allocator,
 
-    pub fn init(lex: *lexer.Lexer, allocator: *std.mem.Allocator) Parser {
+    pub fn init(lex: *lexer.Lexer, allocator: std.mem.Allocator) Parser {
         var parser = Parser{
             .lexer = lex,
-            .allocator = allocator,
             .root = ast.Block.init(null, allocator),
             .current_scope = undefined,
+            .allocator = allocator,
         };
         parser.current_scope = &parser.root;
         return parser;

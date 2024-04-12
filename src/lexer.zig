@@ -49,9 +49,9 @@ pub const Lexer = struct {
     line: usize = 1,
     col: usize = 1,
     queue: std.TailQueue(Token) = .{},
-    allocator: *std.mem.Allocator,
+    allocator: std.mem.Allocator,
 
-    pub fn init(allocator: *std.mem.Allocator, source: []const u8) Lexer {
+    pub fn init(allocator: std.mem.Allocator, source: []const u8) Lexer {
         return Lexer{
             .source = source,
             .allocator = allocator,
