@@ -57,6 +57,8 @@ pub const SymbolTable = struct {
         }
 
         const duped_symbol = try self.allocator.dupe(u8, symbol);
+        errdefer self.allocator.free(duped_symbol);
+
         try self.table.put(duped_symbol, symbol_type);
     }
 };
