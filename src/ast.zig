@@ -64,6 +64,6 @@ pub const Block = struct {
             statement.deinit(allocator);
         }
         self.statements.deinit();
-        self.symbols.deinit(allocator);
+        self.symbols.deinit();
     }
 };

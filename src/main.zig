@@ -1,13 +1,14 @@
 const std = @import("std");
 const lexer = @import("lexer.zig");
 const parser = @import("parser.zig");
+const symbol = @import("symbol.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     defer _ = gpa.deinit();
     var allocator = gpa.allocator();
 
-    const str = "var test = 0;";
+    const str = "var test = 0; var test_other = 2;";
 
     var lex = lexer.Lexer.init(&allocator, str);
     defer lex.deinit();
@@ -22,4 +23,6 @@ pub fn main() !void {
     defer parse.deinit();
 
     try parse.parse();
+
+    try symbol.checkSymbols(&parse.root);
 }
