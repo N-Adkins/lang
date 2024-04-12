@@ -9,6 +9,7 @@ pub const TokenTag = enum {
     r_curly,
     comma,
     period,
+    colon,
     semicolon,
     minus,
     minus_minus,
@@ -196,6 +197,7 @@ pub const Lexer = struct {
                     else => tag = .greater_than,
                 }
             },
+            ':' => tag = .colon,
             ';' => tag = .semicolon,
             else => return LexerError.UnexpectedCharacter,
         }

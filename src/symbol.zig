@@ -5,25 +5,26 @@ const types = @import("types.zig");
 pub const SymbolError = error{
     SymbolNotFound,
     SymbolShadowing,
+    TypeMismatch,
 } || std.mem.Allocator.Error;
 
 pub const SymbolTable = struct {
     parent: ?*SymbolTable,
-    table: std.StringHashMap(types.Type),
+    table: std.StringHashMap(*types.Type),
     allocator: std.mem.Allocator,
 
     pub fn init(parent: ?*SymbolTable, allocator: std.mem.Allocator) SymbolTable {
         return SymbolTable{
             .parent = parent,
-            .table = std.StringHashMap(types.Type).init(allocator),
+            .table = std.StringHashMap(*types.Type).init(allocator),
             .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *SymbolTable) void {
-        var iter = self.table.keyIterator();
-        while (iter.next()) |key| {
-            self.allocator.free(key.*);
+        var iter = self.table.iterator();
+        while (iter.next()) |entry| {
+            self.allocator.free(entry.key_ptr.*);
         }
         self.table.deinit();
     }
@@ -38,7 +39,7 @@ pub const SymbolTable = struct {
         }
     }
 
-    fn getSymbol(self: *SymbolTable, symbol: []const u8) ?*types.Type {
+    fn getSymbol(self: *SymbolTable, symbol: []const u8) ?**types.Type {
         if (self.table.getPtr(symbol)) |symbol_type| {
             return symbol_type;
         }
@@ -50,7 +51,7 @@ pub const SymbolTable = struct {
         return null;
     }
 
-    fn setSymbol(self: *SymbolTable, symbol: []const u8, symbol_type: types.Type) SymbolError!void {
+    fn setSymbol(self: *SymbolTable, symbol: []const u8, symbol_type: *types.Type) SymbolError!void {
         if (self.getSymbol(symbol)) |value| {
             value.* = symbol_type;
             return;
@@ -89,7 +90,7 @@ fn checkStatement(scope: *ast.Block, statement: *ast.Statement) SymbolError!void
             if (scope.symbols.getSymbol(variable.name)) |_| {
                 return SymbolError.SymbolShadowing;
             }
-            try scope.symbols.setSymbol(variable.name, .number); // number is placeholder
+            try scope.symbols.setSymbol(variable.name, variable.decl_type);
         },
     }
 }

@@ -1,6 +1,7 @@
 const std = @import("std");
 const lexer = @import("lexer.zig");
 const ast = @import("ast.zig");
+const types = @import("types.zig");
 
 pub const ParseError = error{
     UnexpectedToken,
@@ -36,6 +37,26 @@ pub const Parser = struct {
             const statement = try self.parseStatement();
             try self.root.statements.append(statement);
         }
+    }
+
+    fn parseTypeDecl(self: *Parser) ParseError!*types.Type {
+        _ = try self.expectToken(.colon);
+        const new_type = try self.parseType();
+        return new_type;
+    }
+
+    fn parseType(self: *Parser) ParseError!*types.Type {
+        const name = try self.expectToken(.identifier);
+        const raw_name = self.lexer.source[name.start..name.end];
+        if (types.builtin_lookup.has(raw_name)) {
+            const new = try self.allocator.create(types.Type);
+            new.* = types.builtin_lookup.get(raw_name).?;
+            return new;
+        }
+
+        // parse custom types w/ recursive descent for function
+        // types
+        return ParseError.UnexpectedToken;
     }
 
     fn parseExpression(self: *Parser) ParseError!*ast.Expression {
@@ -91,15 +112,23 @@ pub const Parser = struct {
 
     fn parseVarDecl(self: *Parser) ParseError!*ast.Statement {
         _ = try self.expectToken(.keyword_var);
+
         const identifier = try self.expectToken(.identifier);
+        const type_decl = try self.parseTypeDecl();
+        errdefer type_decl.deinit(self.allocator);
+
         _ = try self.expectToken(.equals);
+
         const expression = try self.parseExpression();
         const statement = try self.allocator.create(ast.Statement);
         errdefer self.allocator.destroy(statement);
+
         statement.* = .{ .variable_decl = .{
             .name = try self.allocator.dupe(u8, self.lexer.source[identifier.start..identifier.end]),
+            .decl_type = type_decl,
             .value = expression,
         } };
+
         return statement;
     }
 

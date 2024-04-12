@@ -9,7 +9,7 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const str = "var test = 0; var test_other = 2;";
+    const str = "var test: number = 0; var test_other: number = 2;";
 
     var lex = lexer.Lexer.init(allocator, str);
     defer lex.deinit();

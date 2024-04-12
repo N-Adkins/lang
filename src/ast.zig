@@ -1,5 +1,6 @@
 const std = @import("std");
 const symbol = @import("symbol.zig");
+const types = @import("types.zig");
 
 pub const Expression = union(enum) {
     number_constant: i64,
@@ -30,13 +31,14 @@ pub const Expression = union(enum) {
 };
 
 pub const Statement = union(enum) {
-    variable_decl: struct { name: []const u8, value: *Expression },
+    variable_decl: struct { name: []const u8, decl_type: *types.Type, value: *Expression },
     block: Block,
 
     pub fn deinit(self: *Statement, allocator: std.mem.Allocator) void {
         switch (self.*) {
             .variable_decl => |*decl| {
                 allocator.free(decl.name);
+                decl.decl_type.deinit(allocator);
                 decl.value.deinit(allocator);
             },
             .block => |*block| {
