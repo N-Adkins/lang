@@ -9,7 +9,7 @@ pub const ErrorContext = struct {
 
     pub fn deinit(self: *ErrorContext) void {
         while (self.errors.popFirst()) |node| {
-            self.allocator.destroy(node.data.message);
+            node.data.deinit(self.allocator);
             self.allocator.destroy(node);
         } 
     }

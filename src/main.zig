@@ -10,12 +10,13 @@ pub fn main() !u8 {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const str = "var test: number  0;\nvar test_other: number = 4;";
+    const str = "var test: number = 0;\nvar test_other: number = 4;";
     
     var err_ctx  = err.ErrorContext{
         .source = str,
         .allocator = allocator,
     };
+    defer err_ctx.deinit();
 
     var lex = lexer.Lexer.init(allocator, &err_ctx, str);
     defer lex.deinit();
