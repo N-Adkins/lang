@@ -4,7 +4,8 @@ pub const Type = union(enum) {
     number,
 
     pub fn deinit(self: *Type, allocator: std.mem.Allocator) void {
-        allocator.destroy(self);
+        _ = self;
+        _ = allocator;
     }
 };
 

@@ -1,4 +1,5 @@
 const std = @import("std");
+const err = @import("error.zig");
 
 pub const TokenTag = enum {
     identifier,
@@ -36,8 +37,6 @@ pub const Token = struct {
     tag: TokenTag,
     start: usize,
     end: usize,
-    line: usize,
-    col: usize,
 };
 
 pub const LexerError = error{
@@ -47,14 +46,14 @@ pub const LexerError = error{
 pub const Lexer = struct {
     source: []const u8,
     index: usize = 0,
-    line: usize = 1,
-    col: usize = 1,
-    queue: std.TailQueue(Token) = .{},
+    queue: std.DoublyLinkedList(Token) = .{},
+    err_ctx: *err.ErrorContext,
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator, source: []const u8) Lexer {
+    pub fn init(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, source: []const u8) Lexer {
         return Lexer{
             .source = source,
+            .err_ctx = err_ctx,
             .allocator = allocator,
         };
     }
@@ -114,7 +113,7 @@ pub const Lexer = struct {
             _ = self.nextChar();
         }
         const end = self.index;
-        try self.pushToken(Token{ .tag = .number, .start = start, .end = end, .line = self.line, .col = self.col });
+        try self.pushToken(Token{ .tag = .number, .start = start, .end = end });
     }
 
     fn tokenizeIdentifier(self: *Lexer) LexerError!void {
@@ -129,7 +128,7 @@ pub const Lexer = struct {
         }
         const end = self.index;
         const tag = if (keyword_lookup.get(self.source[start..end])) |keyword| keyword else TokenTag.identifier;
-        try self.pushToken(Token{ .tag = tag, .start = start, .end = end, .line = self.line, .col = self.col });
+        try self.pushToken(Token{ .tag = tag, .start = start, .end = end });
     }
 
     fn tokenizeSpecial(self: *Lexer) LexerError!void {
@@ -199,14 +198,17 @@ pub const Lexer = struct {
             },
             ':' => tag = .colon,
             ';' => tag = .semicolon,
-            else => return LexerError.UnexpectedCharacter,
+            else => {
+                try self.err_ctx.newError(.unexpected_character, "Unexpected character: '{c}'", .{char}, start);
+                return LexerError.UnexpectedCharacter;
+            },
         }
         const end = self.index;
-        try self.pushToken(Token{ .tag = tag, .start = start, .end = end, .line = self.line, .col = self.col });
+        try self.pushToken(Token{ .tag = tag, .start = start, .end = end });
     }
 
     fn pushToken(self: *Lexer, token: Token) LexerError!void {
-        const node = try self.allocator.create(std.TailQueue(Token).Node);
+        const node = try self.allocator.create(std.DoublyLinkedList(Token).Node);
         node.* = .{ .prev = null, .next = null, .data = token };
         self.queue.append(node);
     }
@@ -224,11 +226,6 @@ pub const Lexer = struct {
         }
         const c = self.source[self.index];
         self.index += 1;
-        self.col += 1;
-        if (c == '\n') {
-            self.line += 1;
-            self.col = 1;
-        }
         return c;
     }
 
