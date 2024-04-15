@@ -3,6 +3,7 @@ const err = @import("error.zig");
 const lexer = @import("lexer.zig");
 const ast = @import("ast.zig");
 const types = @import("types.zig");
+const symbol = @import("symbol.zig");
 
 pub const ParseError = error{
     UnexpectedToken,
@@ -23,6 +24,7 @@ pub const Parser = struct {
         const parser = Parser{
             .lexer = lex,
             .root = ast.AstNode{ 
+                .index = 0,
                 .data = .{
                     .block = .{
                         .list = std.ArrayListUnmanaged(*ast.AstNode){},
@@ -88,6 +90,7 @@ pub const Parser = struct {
         const expression = try self.allocator.create(ast.AstNode);
         errdefer self.allocator.destroy(expression);
         expression.* = .{ 
+            .index = identifier.start,
             .data = .{
                 .var_get = .{
                     .name = try self.allocator.dupe(u8, self.lexer.source[identifier.start..identifier.end]),
@@ -106,6 +109,7 @@ pub const Parser = struct {
             10,
         ) catch 0;
         expression.* = .{
+            .index = number.start,
             .data = .{ 
                 .integer_constant = .{
                     .value = value,
@@ -123,7 +127,7 @@ pub const Parser = struct {
 
         const statement = switch (self.current.?.tag) {
             .keyword_var => try self.parseVarDecl(),
-            else => return ParseError.UnexpectedToken,
+            else => try self.parseExpression(),
         };
         errdefer { 
             statement.deinit(self.allocator);
@@ -149,6 +153,7 @@ pub const Parser = struct {
         errdefer self.allocator.destroy(statement);
 
         statement.* = .{ 
+            .index = identifier.start,
             .data = .{
                 .var_decl = .{
                     .name = try self.allocator.dupe(u8, self.lexer.source[identifier.start..identifier.end]),

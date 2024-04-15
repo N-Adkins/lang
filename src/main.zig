@@ -10,7 +10,7 @@ pub fn main() !u8 {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const str = "var test: number = 0;\nvar test_other: number = 4;";
+    const str = "var test: number = 0;\nvar test_other: number = 4; 3; 2; test;";
     
     var err_ctx  = err.ErrorContext{
         .source = str,
@@ -40,8 +40,15 @@ pub fn main() !u8 {
             return 1;
         }
     };
-
-    //try symbol.checkSymbols(&parse.root);
+    
+    var symbol_pass = symbol.SymbolPass.init(allocator, &err_ctx, &parse.root);
+    defer symbol_pass.deinit();
+    symbol_pass.run() catch {
+        if (err_ctx.hasErrors()) {
+            err_ctx.printErrors();
+            return 1;
+        } 
+    };
 
     try pretty.print(allocator, parse.root, .{});
 
