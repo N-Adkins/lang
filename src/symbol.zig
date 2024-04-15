@@ -24,11 +24,12 @@ const SymbolStack = struct {
 
     pub fn popFrame(self: *SymbolStack, maybe_frame: ?*Node) void {
         if (maybe_frame) |frame| {
-            self.front = frame;
-            var iter: ?*Node = frame.prev;
-            while (iter) |node| {
-                iter = node.prev;
-                self.allocator.destroy(node);
+            while (self.front != null and self.front.? != frame) {
+                _ = self.pop();
+            }
+        } else {
+            while (self.front != null) {
+                _ = self.pop();
             }
         }
     }
