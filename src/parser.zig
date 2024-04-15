@@ -23,14 +23,9 @@ pub const Parser = struct {
     pub fn init(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, lex: *lexer.Lexer) Parser {
         const parser = Parser{
             .lexer = lex,
-            .root = ast.AstNode{ 
-                .index = 0,
-                .data = .{
-                    .block = .{
-                        .list = std.ArrayListUnmanaged(*ast.AstNode){},
-                    }
-                }
-            },
+            .root = ast.AstNode{ .index = 0, .data = .{ .block = .{
+                .list = std.ArrayListUnmanaged(*ast.AstNode){},
+            } } },
             .err_ctx = err_ctx,
             .allocator = allocator,
         };
@@ -40,7 +35,7 @@ pub const Parser = struct {
     pub fn deinit(self: *Parser) void {
         self.root.deinit(self.allocator);
     }
-    
+
     /// Performs all parsing of the tokens held within the passed lexer
     pub fn parse(self: *Parser) ParseError!void {
         _ = self.nextToken();
@@ -49,7 +44,7 @@ pub const Parser = struct {
             try self.root.data.block.list.append(self.allocator, statement);
         }
     }
-    
+
     fn parseTypeDecl(self: *Parser) ParseError!types.Type {
         _ = try self.expectToken(.colon);
         const new_type = try self.parseType();
@@ -76,10 +71,9 @@ pub const Parser = struct {
             .identifier => try self.parseVarGet(),
             .number => try self.parseNumberConstant(),
             else => {
-                try self.err_ctx.errorFromToken(.unexpected_token, "Expected expression, found [{s},\"{s}\"]", 
-                    .{@tagName(self.current.?.tag), self.lexer.source[self.current.?.start..self.current.?.end]}, self.current.?);
+                try self.err_ctx.errorFromToken(.unexpected_token, "Expected expression, found [{s},\"{s}\"]", .{ @tagName(self.current.?.tag), self.lexer.source[self.current.?.start..self.current.?.end] }, self.current.?);
                 return ParseError.UnexpectedToken;
-            }
+            },
         };
 
         return expression;
@@ -89,7 +83,7 @@ pub const Parser = struct {
         const identifier = try self.expectToken(.identifier);
         const expression = try self.allocator.create(ast.AstNode);
         errdefer self.allocator.destroy(expression);
-        expression.* = .{ 
+        expression.* = .{
             .index = identifier.start,
             .data = .{
                 .var_get = .{
@@ -110,7 +104,7 @@ pub const Parser = struct {
         ) catch 0;
         expression.* = .{
             .index = number.start,
-            .data = .{ 
+            .data = .{
                 .integer_constant = .{
                     .value = value,
                 },
@@ -129,7 +123,7 @@ pub const Parser = struct {
             .keyword_var => try self.parseVarDecl(),
             else => try self.parseExpression(),
         };
-        errdefer { 
+        errdefer {
             statement.deinit(self.allocator);
             self.allocator.destroy(statement);
         }
@@ -152,20 +146,17 @@ pub const Parser = struct {
         const statement = try self.allocator.create(ast.AstNode);
         errdefer self.allocator.destroy(statement);
 
-        statement.* = .{ 
-            .index = identifier.start,
-            .data = .{
-                .var_decl = .{
-                    .name = try self.allocator.dupe(u8, self.lexer.source[identifier.start..identifier.end]),
-                    .decl_type = type_decl,
-                    .expr = expression,
-                },
-            }
-        };
+        statement.* = .{ .index = identifier.start, .data = .{
+            .var_decl = .{
+                .name = try self.allocator.dupe(u8, self.lexer.source[identifier.start..identifier.end]),
+                .decl_type = type_decl,
+                .expr = expression,
+            },
+        } };
 
         return statement;
     }
-    
+
     /// Errors if the current token doesn't have the passed tag.
     /// If it does, it runs nextToken and returns the token that matched
     /// the tag.
@@ -175,22 +166,16 @@ pub const Parser = struct {
                 _ = self.nextToken();
                 return current;
             } else {
-                try self.err_ctx.errorFromToken(.unexpected_token, 
-                    "Expected token of type {s}, found [{s},\"{s}\"]", 
-                    .{@tagName(tag), @tagName(current.tag), self.lexer.source[current.start..current.end]}, 
-                    current);
+                try self.err_ctx.errorFromToken(.unexpected_token, "Expected token of type {s}, found [{s},\"{s}\"]", .{ @tagName(tag), @tagName(current.tag), self.lexer.source[current.start..current.end] }, current);
                 return ParseError.UnexpectedToken;
             }
         } else {
-            try self.err_ctx.newError(.unexpected_end,
-                "Expected token of type {s}, found end",
-                .{@tagName(tag)},
-                null);
+            try self.err_ctx.newError(.unexpected_end, "Expected token of type {s}, found end", .{@tagName(tag)}, null);
             return ParseError.UnexpectedEnd;
         }
     }
-    
-    /// Puts the current token into previous, loads next token from 
+
+    /// Puts the current token into previous, loads next token from
     /// lexer into current and returns the new current token
     fn nextToken(self: *Parser) ?lexer.Token {
         self.previous = self.current;

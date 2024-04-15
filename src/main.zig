@@ -11,8 +11,8 @@ pub fn main() !u8 {
     const allocator = gpa.allocator();
 
     const str = "var test: number = 0;\nvar test_other: number = 4; 3; 2; {} test;";
-    
-    var err_ctx  = err.ErrorContext{
+
+    var err_ctx = err.ErrorContext{
         .source = str,
         .allocator = allocator,
     };
@@ -24,7 +24,7 @@ pub fn main() !u8 {
         if (err_ctx.hasErrors()) {
             err_ctx.printErrors();
             return 1;
-        } 
+        }
     };
 
     //while (lex.queue.popFirst()) |node| {
@@ -40,14 +40,14 @@ pub fn main() !u8 {
             return 1;
         }
     };
-    
+
     var symbol_pass = symbol.SymbolPass.init(allocator, &err_ctx, &parse.root);
     defer symbol_pass.deinit();
     symbol_pass.run() catch {
         if (err_ctx.hasErrors()) {
             err_ctx.printErrors();
             return 1;
-        } 
+        }
     };
 
     try pretty.print(allocator, parse.root, .{});

@@ -11,11 +11,11 @@ pub const ErrorContext = struct {
         while (self.errors.popFirst()) |node| {
             node.data.deinit(self.allocator);
             self.allocator.destroy(node);
-        } 
+        }
     }
 
     pub fn newError(self: *ErrorContext, tag: ErrorTag, comptime message_fmt: []const u8, args: anytype, index: ?usize) std.mem.Allocator.Error!void {
-        const message = std.fmt.allocPrint(self.allocator, message_fmt, args) catch "Allocation Failure";        
+        const message = std.fmt.allocPrint(self.allocator, message_fmt, args) catch "Allocation Failure";
 
         const err = blk: {
             if (index) |i| {
@@ -58,14 +58,14 @@ pub const ErrorContext = struct {
         if (err.details) |details| {
             stderr.print(
                 "[E{d:0>4}]: {s}\nLine {d:0>4}: \"{s}\"\n",
-                .{errcode, err.message, details.line_num, details.line},
+                .{ errcode, err.message, details.line_num, details.line },
             ) catch {};
             stderr.writeByteNTimes(' ', details.highlight + 12) catch {};
             _ = stderr.writeAll("^\n") catch {};
         } else {
             stderr.print(
                 "[E{d:0>4}]: {s}\n",
-                .{errcode, err.message},
+                .{ errcode, err.message },
             ) catch {};
         }
     }

@@ -7,7 +7,9 @@ pub const AstNode = struct {
     index: usize,
     data: union(enum) {
         // Expressions
-        integer_constant: struct { value: i64, },
+        integer_constant: struct {
+            value: i64,
+        },
         var_get: struct { name: []u8 },
 
         // Statements
@@ -42,6 +44,6 @@ pub const AstNode = struct {
                 expr.expr.deinit(allocator);
                 allocator.destroy(expr.expr);
             },
-        } 
+        }
     }
 };

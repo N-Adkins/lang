@@ -94,7 +94,7 @@ pub const SymbolPass = struct {
 
     pub fn run(self: *SymbolPass) SymbolError!void {
         try self.populateNode(self.root);
-    } 
+    }
 
     fn populateNode(self: *SymbolPass, node: *ast.AstNode) SymbolError!void {
         // Checking AST nodes that need a valid symbol
@@ -125,7 +125,7 @@ pub const SymbolPass = struct {
 
             .var_decl => |var_decl| {
                 if (self.stack.find(var_decl.name)) |_| {
-                    try self.err_ctx.newError(.symbol_shadowing, "Found symbol shadowing previous declaration, \"{s}\"", .{var_decl.name}, node.index);   
+                    try self.err_ctx.newError(.symbol_shadowing, "Found symbol shadowing previous declaration, \"{s}\"", .{var_decl.name}, node.index);
                     return SymbolError.SymbolShadowing;
                 }
                 try self.stack.push(node);
@@ -133,6 +133,6 @@ pub const SymbolPass = struct {
             },
             .var_assign => |var_assign| try self.populateNode(var_assign.expr),
             .expr_statement => |expr| try self.populateNode(expr.expr),
-        } 
+        }
     }
 };
