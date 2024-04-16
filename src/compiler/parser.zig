@@ -118,7 +118,7 @@ pub const Parser = struct {
             try self.err_ctx.newError(.unexpected_end, "Expected statement, found end", .{}, null);
             return ParseError.UnexpectedEnd;
         }
-        
+
         var needs_semicolon = true;
         const statement = switch (self.current.?.tag) {
             .keyword_var => try self.parseVarDecl(),
@@ -133,7 +133,7 @@ pub const Parser = struct {
             statement.deinit(self.allocator);
             self.allocator.destroy(statement);
         }
-    
+
         if (needs_semicolon) {
             _ = try self.expectToken(.semicolon);
         }
@@ -174,8 +174,8 @@ pub const Parser = struct {
         const statement = try self.allocator.create(ast.AstNode);
         errdefer self.allocator.destroy(statement);
 
-        statement.* = .{ 
-            .index = identifier.start, 
+        statement.* = .{
+            .index = identifier.start,
             .data = .{
                 .var_assign = .{
                     .name = try self.allocator.dupe(u8, self.lexer.source[identifier.start..identifier.end]),
@@ -189,7 +189,7 @@ pub const Parser = struct {
 
     fn parseBlock(self: *Parser) ParseError!*ast.AstNode {
         const start = try self.expectToken(.l_curly);
-        
+
         var body = std.ArrayListUnmanaged(*ast.AstNode){};
         errdefer {
             for (body.items) |node| {
@@ -200,7 +200,7 @@ pub const Parser = struct {
         const found_end = blk: {
             while (self.current) |token| {
                 if (token.tag == .r_curly) {
-                    break :blk true;           
+                    break :blk true;
                 }
                 const statement = try self.parseStatement();
                 try body.append(self.allocator, statement);

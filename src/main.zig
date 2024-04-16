@@ -7,6 +7,6 @@ pub fn main() !void {
     const allocator = gpa.allocator();
 
     const str = @embedFile("examples/test.txt");
-    
+
     compiler.compile(allocator, str) catch {};
 }

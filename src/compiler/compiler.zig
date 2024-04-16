@@ -25,7 +25,7 @@ fn runPasses(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, source: [
     var lex = lexer.Lexer.init(allocator, err_ctx, source);
     defer lex.deinit();
     try lex.tokenize();
-    
+
     var parse = parser.Parser.init(allocator, err_ctx, &lex);
     defer parse.deinit();
     try parse.parse();
@@ -39,5 +39,3 @@ fn runPasses(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, source: [
 
     try pretty.print(allocator, parse.root, .{});
 }
-
-
