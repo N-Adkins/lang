@@ -1,0 +1,4 @@
+{
+    var test: number = 3;
+    test = 5;
+}

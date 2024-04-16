@@ -7,6 +7,7 @@ const types = @import("types.zig");
 pub const ParseError = error{
     UnexpectedToken,
     UnexpectedEnd,
+    UnterminatedBlock,
 } || std.mem.Allocator.Error;
 
 /// Parsing state, holds a reference to the lexer
@@ -117,17 +118,25 @@ pub const Parser = struct {
             try self.err_ctx.newError(.unexpected_end, "Expected statement, found end", .{}, null);
             return ParseError.UnexpectedEnd;
         }
-
+        
+        var needs_semicolon = true;
         const statement = switch (self.current.?.tag) {
             .keyword_var => try self.parseVarDecl(),
+            .identifier => try self.parseVarAssign(),
+            .l_curly => blk: {
+                needs_semicolon = false;
+                break :blk try self.parseBlock();
+            },
             else => try self.parseExpression(),
         };
         errdefer {
             statement.deinit(self.allocator);
             self.allocator.destroy(statement);
         }
-
-        _ = try self.expectToken(.semicolon);
+    
+        if (needs_semicolon) {
+            _ = try self.expectToken(.semicolon);
+        }
 
         return statement;
     }
@@ -154,6 +163,69 @@ pub const Parser = struct {
         } };
 
         return statement;
+    }
+
+    fn parseVarAssign(self: *Parser) ParseError!*ast.AstNode {
+        const identifier = try self.expectToken(.identifier);
+
+        _ = try self.expectToken(.equals);
+
+        const expression = try self.parseExpression();
+        const statement = try self.allocator.create(ast.AstNode);
+        errdefer self.allocator.destroy(statement);
+
+        statement.* = .{ 
+            .index = identifier.start, 
+            .data = .{
+                .var_assign = .{
+                    .name = try self.allocator.dupe(u8, self.lexer.source[identifier.start..identifier.end]),
+                    .expr = expression,
+                },
+            },
+        };
+
+        return statement;
+    }
+
+    fn parseBlock(self: *Parser) ParseError!*ast.AstNode {
+        const start = try self.expectToken(.l_curly);
+        
+        var body = std.ArrayListUnmanaged(*ast.AstNode){};
+        errdefer {
+            for (body.items) |node| {
+                node.deinit(self.allocator);
+            }
+        }
+
+        const found_end = blk: {
+            while (self.current) |token| {
+                if (token.tag == .r_curly) {
+                    break :blk true;           
+                }
+                const statement = try self.parseStatement();
+                try body.append(self.allocator, statement);
+            }
+            break :blk false;
+        };
+
+        if (!found_end) {
+            try self.err_ctx.newError(.unterminated_block, "Failed to find end of block", .{}, start.start);
+            return ParseError.UnexpectedEnd;
+        }
+
+        _ = try self.expectToken(.r_curly);
+
+        const block = try self.allocator.create(ast.AstNode);
+        block.* = .{
+            .index = start.start,
+            .data = .{
+                .block = .{
+                    .list = body,
+                },
+            },
+        };
+
+        return block;
     }
 
     /// Errors if the current token doesn't have the passed tag.

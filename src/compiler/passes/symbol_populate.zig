@@ -115,7 +115,6 @@ pub const SymbolPass = struct {
         switch (node.data) {
             .integer_constant => {},
             .var_get => |_| {},
-
             .block => |block| {
                 const frame = self.stack.getFrame();
                 for (block.list.items) |statement| {
@@ -123,7 +122,6 @@ pub const SymbolPass = struct {
                 }
                 self.stack.popFrame(frame);
             },
-
             .var_decl => |var_decl| {
                 if (self.stack.find(var_decl.name)) |_| {
                     try self.err_ctx.newError(.symbol_shadowing, "Found symbol shadowing previous declaration, \"{s}\"", .{var_decl.name}, node.index);
