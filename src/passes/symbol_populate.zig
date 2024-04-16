@@ -1,9 +1,9 @@
 const std = @import("std");
-const ast = @import("ast.zig");
-const err = @import("error.zig");
-const types = @import("types.zig");
+const ast = @import("../ast.zig");
+const err = @import("../error.zig");
+const types = @import("../types.zig");
 
-pub const SymbolError = error{
+pub const SymbolPassError = error{
     SymbolNotFound,
     SymbolShadowing,
     TypeMismatch,
@@ -34,7 +34,7 @@ const SymbolStack = struct {
         }
     }
 
-    pub fn push(self: *SymbolStack, symbol: *ast.AstNode) SymbolError!void {
+    pub fn push(self: *SymbolStack, symbol: *ast.AstNode) SymbolPassError!void {
         const node = try self.allocator.create(Node);
         node.symbol = symbol;
         node.next = self.front;
@@ -92,11 +92,11 @@ pub const SymbolPass = struct {
         while (self.stack.pop()) |_| {}
     }
 
-    pub fn run(self: *SymbolPass) SymbolError!void {
+    pub fn run(self: *SymbolPass) SymbolPassError!void {
         try self.populateNode(self.root);
     }
 
-    fn populateNode(self: *SymbolPass, node: *ast.AstNode) SymbolError!void {
+    fn populateNode(self: *SymbolPass, node: *ast.AstNode) SymbolPassError!void {
         // Checking AST nodes that need a valid symbol
         const get_symbol: ?[]const u8 = switch (node.data) {
             .var_get => |var_get| var_get.name,
@@ -108,13 +108,14 @@ pub const SymbolPass = struct {
                 node.symbol_decl = found;
             } else {
                 try self.err_ctx.newError(.symbol_not_found, "Failed to locate symbol \"{s}\"", .{symbol}, node.index);
-                return SymbolError.SymbolNotFound;
+                return SymbolPassError.SymbolNotFound;
             }
         }
 
         switch (node.data) {
             .integer_constant => {},
             .var_get => |_| {},
+
             .block => |block| {
                 const frame = self.stack.getFrame();
                 for (block.list.items) |statement| {
@@ -126,13 +127,12 @@ pub const SymbolPass = struct {
             .var_decl => |var_decl| {
                 if (self.stack.find(var_decl.name)) |_| {
                     try self.err_ctx.newError(.symbol_shadowing, "Found symbol shadowing previous declaration, \"{s}\"", .{var_decl.name}, node.index);
-                    return SymbolError.SymbolShadowing;
+                    return SymbolPassError.SymbolShadowing;
                 }
                 try self.stack.push(node);
                 try self.populateNode(var_decl.expr);
             },
             .var_assign => |var_assign| try self.populateNode(var_assign.expr),
-            .expr_statement => |expr| try self.populateNode(expr.expr),
         }
     }
 };

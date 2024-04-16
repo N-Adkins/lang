@@ -1,5 +1,4 @@
 const std = @import("std");
-const symbol = @import("symbol.zig");
 const types = @import("types.zig");
 
 pub const AstNode = struct {
@@ -16,7 +15,6 @@ pub const AstNode = struct {
         block: struct { list: std.ArrayListUnmanaged(*AstNode) },
         var_decl: struct { name: []u8, decl_type: types.Type, expr: *AstNode },
         var_assign: struct { name: []u8, expr: *AstNode },
-        expr_statement: struct { expr: *AstNode },
     },
 
     pub fn deinit(self: *AstNode, allocator: std.mem.Allocator) void {
@@ -39,10 +37,6 @@ pub const AstNode = struct {
                 allocator.free(var_assign.name);
                 var_assign.expr.deinit(allocator);
                 allocator.destroy(var_assign.expr);
-            },
-            .expr_statement => |expr| {
-                expr.expr.deinit(allocator);
-                allocator.destroy(expr.expr);
             },
         }
     }

@@ -1,9 +1,8 @@
 const std = @import("std");
+const ast = @import("ast.zig");
 const err = @import("error.zig");
 const lexer = @import("lexer.zig");
-const ast = @import("ast.zig");
 const types = @import("types.zig");
-const symbol = @import("symbol.zig");
 
 pub const ParseError = error{
     UnexpectedToken,

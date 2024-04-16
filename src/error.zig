@@ -108,6 +108,7 @@ pub const ErrorTag = enum(u16) {
     unexpected_end,
     symbol_not_found,
     symbol_shadowing,
+    mismatched_types,
 };
 
 pub const Error = struct {
