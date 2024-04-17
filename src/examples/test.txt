@@ -1,4 +1,6 @@
 {
     var test: number = 3;
-    test = 5;
+    var other: number = 5;
+    test = other;
+    other = 4;
 }

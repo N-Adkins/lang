@@ -10,6 +10,7 @@ pub const ErrorTag = enum(u16) {
     symbol_shadowing,
     mismatched_types,
     constant_overflow,
+    local_overflow,
 };
 
 pub const Error = struct {

@@ -11,9 +11,6 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const pretty = b.dependency("pretty", .{ .target = target, .optimize = optimize });
-    exe.root_module.addImport("pretty", pretty.module("pretty"));
-
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);
@@ -35,4 +32,20 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_exe_unit_tests.step);
+    
+    //const docs = b.addObject(.{
+    //  .name = "Lang",
+    //  .root_source_file = .{ .path = "src/main.zig" },
+    //  .target = target,
+    //  .optimize = optimize,
+    //});
+
+    //const install_docs = b.addInstallDirectory(.{
+    //  .source_dir = docs.getEmittedDocs(),
+    //  .install_dir = .prefix,
+    //  .install_subdir = "docs",
+    //});
+
+    //const docs_step = b.step("docs", "Generate documentation");
+    //docs_step.dependOn(&install_docs.step);
 }

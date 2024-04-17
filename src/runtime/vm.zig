@@ -1,19 +1,23 @@
 const std = @import("std");
 const byte = @import("bytecode.zig");
-const call = @import("call.zig");
+const stack = @import("stack.zig");
 const value = @import("value.zig");
 
 pub const RuntimeError = error{
     MalformedInstruction,
     InvalidConstant,
     InvalidCallFrame,
-} || value.StackError || call.StackError;
+} || stack.StackError;
+
+const CallFrame = struct {
+    index: usize,
+};
 
 pub const VM = struct {
     bytes: []const u8,
     constants: []const value.Value,
-    value_stack: value.Stack,
-    call_stack: call.Stack,
+    eval_stack: stack.Stack(value.Value),
+    call_stack: stack.Stack(CallFrame),
     pc: usize = 0,
     allocator: std.mem.Allocator,
 
@@ -21,15 +25,15 @@ pub const VM = struct {
         return VM{
             .bytes = bytes,
             .constants = constants,
-            .value_stack = value.Stack.initStatic(allocator, 0xFFFF),
-            .call_stack = call.Stack.init(allocator),
+            .eval_stack = stack.Stack(value.Value).init(allocator, 0xFF),
+            .call_stack = stack.Stack(usize).init(allocator, 0xFF),
             .allocator = allocator,
         };
     }
 
     pub fn deinit(self: *VM) void {
-        self.value_stack.deinit();
-        self.call_stack.deinit();
+        self.eval_stack.deinit(self.allocator);
+        self.call_stack.deinit(self.allocator);
     }
 
     pub fn run(self: *VM) RuntimeError!void {
