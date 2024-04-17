@@ -95,9 +95,9 @@ pub const CodeGenPass = struct {
         try self.pushOp(.CONSTANT);
         try self.pushByte(@truncate(index));
     }
-    
+
     fn pushLocal(self: *CodeGenPass, decl: *ast.AstNode) GenError!u8 {
-        const head = self.func_stack.first.?; 
+        const head = self.func_stack.first.?;
         const index = head.data.local_count;
         try head.data.map.put(self.allocator, @ptrCast(decl), index);
         if (head.data.local_count +% 1 < head.data.local_count) {
@@ -107,7 +107,7 @@ pub const CodeGenPass = struct {
         head.data.local_count += 1;
         return index;
     }
-    
+
     fn getLocal(self: *CodeGenPass, decl: *ast.AstNode) GenError!u8 {
         const head = self.func_stack.first.?;
         const index = head.data.map.get(@ptrCast(decl)).?;
