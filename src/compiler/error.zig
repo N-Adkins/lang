@@ -1,6 +1,31 @@
 const std = @import("std");
 const lexer = @import("lexer.zig");
 
+pub const ErrorTag = enum(u16) {
+    unexpected_character,
+    unexpected_token,
+    unexpected_end,
+    unterminated_block,
+    symbol_not_found,
+    symbol_shadowing,
+    mismatched_types,
+    constant_overflow,
+};
+
+pub const Error = struct {
+    tag: ErrorTag,
+    message: []const u8,
+    details: ?struct {
+        line: []const u8,
+        line_num: usize,
+        highlight: usize,
+    },
+
+    pub fn deinit(self: *Error, allocator: std.mem.Allocator) void {
+        allocator.free(self.message);
+    }
+};
+
 pub const ErrorContext = struct {
     source: []const u8,
     errors: std.DoublyLinkedList(Error) = std.DoublyLinkedList(Error){},
@@ -99,29 +124,5 @@ pub const ErrorContext = struct {
             unreachable;
         };
         return .{ .line = line, .num = line_num };
-    }
-};
-
-pub const ErrorTag = enum(u16) {
-    unexpected_character,
-    unexpected_token,
-    unexpected_end,
-    unterminated_block,
-    symbol_not_found,
-    symbol_shadowing,
-    mismatched_types,
-};
-
-pub const Error = struct {
-    tag: ErrorTag,
-    message: []const u8,
-    details: ?struct {
-        line: []const u8,
-        line_num: usize,
-        highlight: usize,
-    },
-
-    pub fn deinit(self: *Error, allocator: std.mem.Allocator) void {
-        allocator.free(self.message);
     }
 };
