@@ -9,6 +9,8 @@ pub fn build(b: *std.Build) void {
         .root_source_file = .{ .path = "src/main.zig" },
         .target = target,
         .optimize = optimize,
+        .use_llvm = false, 
+        .use_lld = false,
     });
 
     b.installArtifact(exe);
@@ -26,6 +28,8 @@ pub fn build(b: *std.Build) void {
         .root_source_file = .{ .path = "src/main.zig" },
         .target = target,
         .optimize = optimize,
+        .use_llvm = false,
+        .use_lld = false,
     });
 
     const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);

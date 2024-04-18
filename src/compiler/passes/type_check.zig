@@ -35,6 +35,16 @@ pub const Pass = struct {
                 }
                 return .void;
             },
+            .binary_op => |binary| {
+                const lhs_type = try self.typeCheck(binary.lhs);
+                const rhs_type = try self.typeCheck(binary.rhs);
+                if (!lhs_type.equal(&rhs_type)) {
+                    try self.err_ctx.newError(.mismatched_types, "Expected type {any} in right hand of binary expression, found type {any}", .{ lhs_type, rhs_type }, binary.rhs.index);
+                    return Error.MismatchedTypes;
+                }
+                return lhs_type;
+            },
+            .unary_op => |_| return .void,
             .var_decl => |var_decl| {
                 const expr_type = try self.typeCheck(var_decl.expr);
                 if (!expr_type.equal(&var_decl.decl_type)) {

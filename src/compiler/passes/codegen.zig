@@ -69,6 +69,18 @@ pub const Pass = struct {
                 try self.pushOp(.VAR_GET);
                 try self.pushByte(index);
             },
+            .binary_op => |binary| {
+                const op: byte.Opcode = switch (binary.op) {
+                    .add => .ADD,
+                    .sub => .SUB,
+                    .mul => .MUL,
+                    .div => .DIV,
+                };
+                try self.genNode(binary.lhs);
+                try self.genNode(binary.rhs);
+                try self.pushOp(op);
+            },
+            .unary_op => |_| {},
             .block => |block| {
                 for (block.list.items) |statement| {
                     try self.genNode(statement);

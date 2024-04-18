@@ -3,6 +3,13 @@
 const std = @import("std");
 const types = @import("types.zig");
 
+pub const Operator = enum(u8) {
+    add,
+    sub,
+    mul,
+    div,
+};
+
 /// Abstract Syntax Tree Node, contains both
 /// statements and expressions
 pub const Node = struct {
@@ -12,6 +19,8 @@ pub const Node = struct {
         // Expressions
         integer_constant: struct { value: i64 },
         var_get: struct { name: []u8 },
+        unary_op: struct { op: Operator, expr: *Node },
+        binary_op: struct { op: Operator, lhs: *Node, rhs: *Node },
 
         // Statements
         block: struct { list: std.ArrayListUnmanaged(*Node) },
@@ -19,11 +28,20 @@ pub const Node = struct {
         var_assign: struct { name: []u8, expr: *Node },
     },
 
-    /// Does not assume that self is heap allocated
     pub fn deinit(self: *Node, allocator: std.mem.Allocator) void {
         switch (self.data) {
             .integer_constant => {},
             .var_get => |*var_get| allocator.free(var_get.name),
+            .unary_op => |unary| {
+                unary.expr.deinit(allocator);
+                allocator.destroy(unary.expr);
+            },
+            .binary_op => |binary| {
+                binary.lhs.deinit(allocator);
+                binary.rhs.deinit(allocator);
+                allocator.destroy(binary.lhs);
+                allocator.destroy(binary.rhs);
+            },
             .block => |*block| {
                 for (block.list.items) |node| {
                     node.deinit(allocator);

@@ -7,6 +7,10 @@ pub const Opcode = enum(u8) {
     VAR_SET, // u8 frame offset, pops value off of stack and assigns variable to it
     VAR_GET, // u8 frame offset, pushes value from variable onto stack
     STACK_ALLOC, // u8 amount of allocations to make, used to initialize memory for local variables
+    ADD, // pops 2 values off of stack, pushes result after adding them
+    SUB, // pops 2 values off of stack, pushes result after subtracting them
+    MUL, // pops 2 values off of stack, pushes result after multiplying them
+    DIV, // pops 2 values off of stack, pushes result after dividing them
 };
 
 pub fn dumpBytecode(bytes: []const u8) void {
@@ -31,6 +35,18 @@ pub fn dumpBytecode(bytes: []const u8) void {
             .STACK_ALLOC => {
                 std.debug.print("0x{X:0>2}\n", .{bytes[i]});
                 i += 1;
+            },
+            .ADD => {
+                std.debug.print("\n", .{});
+            },
+            .SUB => {
+                std.debug.print("\n", .{});
+            },
+            .MUL => {
+                std.debug.print("\n", .{});
+            },
+            .DIV => {
+                std.debug.print("\n", .{});
             },
         }
     }

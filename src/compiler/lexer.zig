@@ -20,6 +20,10 @@ pub const TokenTag = enum {
     plus,
     plus_plus,
     plus_equals,
+    star,
+    star_equals,
+    slash,
+    slash_equals,
     equals,
     equals_equals,
     less_than,
@@ -175,6 +179,24 @@ pub const Lexer = struct {
                         tag = .minus_equals;
                     },
                     else => tag = .minus,
+                }
+            },
+            '*' => if (self.peekChar()) |c| {
+                switch (c) {
+                    '=' => {
+                        _ = self.nextChar();
+                        tag = .star_equals;
+                    },
+                    else => tag = .star,
+                }
+            },
+            '/' => if (self.peekChar()) |c| {
+                switch (c) {
+                    '=' => {
+                        _ = self.nextChar();
+                        tag = .slash_equals;
+                    },
+                    else => tag = .slash,
                 }
             },
             '=' => if (self.peekChar()) |c| {

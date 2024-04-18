@@ -1,6 +1,5 @@
 {
-    var test: number = 3;
-    var other: number = 5;
-    test = other;
-    test;
+    var test: number = 3 * (5 - 2);
+    var thing: number = (82 + test) * 2;
+    thing;
 }

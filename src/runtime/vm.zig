@@ -60,6 +60,10 @@ pub const VM = struct {
             .VAR_SET => try self.opVarSet(),
             .VAR_GET => try self.opVarGet(),
             .STACK_ALLOC => try self.opStackAlloc(),
+            .ADD => try self.opAdd(),
+            .SUB => try self.opSub(),
+            .MUL => try self.opMul(),
+            .DIV => try self.opDiv(),
         }
     }
 
@@ -90,8 +94,48 @@ pub const VM = struct {
     fn opStackAlloc(self: *VM) Error!void {
         const amount = try self.nextByte();
         for (0..amount) |_| {
-            try self.eval_stack.push(value.Value{ .data = .uninitialized });
+            try self.eval_stack.push(undefined);
         }
+    }
+
+    fn opAdd(self: *VM) Error!void {
+        const rhs = try self.eval_stack.pop();
+        const lhs = try self.eval_stack.pop();
+        try self.eval_stack.push(.{
+            .data = .{
+                .number = lhs.data.number + rhs.data.number,
+            },
+        });
+    }
+
+    fn opSub(self: *VM) Error!void {
+        const rhs = try self.eval_stack.pop();
+        const lhs = try self.eval_stack.pop();
+        try self.eval_stack.push(.{
+            .data = .{
+                .number = lhs.data.number - rhs.data.number,
+            },
+        });
+    }
+
+    fn opMul(self: *VM) Error!void {
+        const rhs = try self.eval_stack.pop();
+        const lhs = try self.eval_stack.pop();
+        try self.eval_stack.push(.{
+            .data = .{
+                .number = lhs.data.number * rhs.data.number,
+            },
+        });
+    }
+
+    fn opDiv(self: *VM) Error!void {
+        const rhs = try self.eval_stack.pop();
+        const lhs = try self.eval_stack.pop();
+        try self.eval_stack.push(.{
+            .data = .{
+                .number = @divTrunc(lhs.data.number, rhs.data.number),
+            },
+        });
     }
 
     /// Fetches the next byte and errors if there isn't one

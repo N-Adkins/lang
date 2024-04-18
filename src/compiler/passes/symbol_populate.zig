@@ -126,6 +126,11 @@ pub const Pass = struct {
                 }
                 self.stack.popFrame(frame);
             },
+            .binary_op => |binary| {
+                try self.populateNode(binary.lhs);
+                try self.populateNode(binary.rhs);
+            },
+            .unary_op => |unary| try self.populateNode(unary.expr),
             .var_decl => |var_decl| {
                 if (self.stack.find(var_decl.name)) |_| {
                     try self.err_ctx.newError(.symbol_shadowing, "Found symbol shadowing previous declaration, \"{s}\"", .{var_decl.name}, node.index);

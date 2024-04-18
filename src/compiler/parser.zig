@@ -6,6 +6,12 @@ const err = @import("error.zig");
 const lexer = @import("lexer.zig");
 const types = @import("types.zig");
 
+/// Container for the precedence of an operator
+const Precedence = struct {
+    lhs: usize,
+    rhs: usize,
+};
+
 pub const Error = error{
     UnexpectedToken,
     UnexpectedEnd,
@@ -72,8 +78,57 @@ pub const Parser = struct {
             try self.err_ctx.newError(.unexpected_end, "Expected expression, found end", .{}, null);
             return Error.UnexpectedEnd;
         }
+        return try self.parsePrecedenceExpression(0);
+    }
 
+    /// Pratt parser function for expressions
+    fn parsePrecedenceExpression(self: *Parser, min_precedence: usize) Error!*ast.Node {
+        var lhs = try self.parseBasicExpression();
+        errdefer {
+            lhs.deinit(self.allocator);
+            self.allocator.destroy(lhs);
+        }
+
+        // binary expressions
+        while (self.previous) |prev| {
+            const index = prev.start;
+            const op = switch (prev.tag) {
+                .plus => ast.Operator.add,
+                .minus => ast.Operator.sub,
+                .star => ast.Operator.mul,
+                .slash => ast.Operator.div,
+                else => break,
+            };
+
+            const precedence = infixPrecedence(op).?;
+            if (precedence.lhs < min_precedence) {
+                break;
+            }
+
+            _ = self.nextToken();
+            const rhs = try self.parsePrecedenceExpression(precedence.rhs);
+
+            const node = try self.allocator.create(ast.Node);
+            node.* = .{
+                .index = index,
+                .data = .{
+                    .binary_op = .{
+                        .op = op,
+                        .lhs = lhs,
+                        .rhs = rhs,
+                    },
+                },
+            };
+
+            lhs = node;
+        }
+
+        return lhs;
+    }
+
+    fn parseBasicExpression(self: *Parser) Error!*ast.Node {
         const expression = switch (self.previous.?.tag) {
+            .l_paren => try self.parseParen(),
             .identifier => try self.parseVarGet(),
             .number => try self.parseNumberConstant(),
             else => {
@@ -81,8 +136,14 @@ pub const Parser = struct {
                 return Error.UnexpectedToken;
             },
         };
-
         return expression;
+    }
+
+    fn parseParen(self: *Parser) Error!*ast.Node {
+        _ = try self.expectToken(.l_paren);
+        const expr = try self.parseExpression();
+        _ = try self.expectToken(.r_paren);
+        return expr;
     }
 
     fn parseVarGet(self: *Parser) Error!*ast.Node {
@@ -284,5 +345,12 @@ pub const Parser = struct {
         self.previous = self.current;
         self.current = self.lexer.nextToken();
         return self.previous;
+    }
+
+    fn infixPrecedence(op: ast.Operator) ?Precedence {
+        return switch (op) {
+            .add, .sub => .{ .lhs = 1, .rhs = 2 },
+            .mul, .div => .{ .lhs = 3, .rhs = 4 },
+        };
     }
 };
