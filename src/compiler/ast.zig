@@ -1,8 +1,8 @@
 const std = @import("std");
 const types = @import("types.zig");
 
-pub const AstNode = struct {
-    symbol_decl: ?*AstNode = null,
+pub const Node = struct {
+    symbol_decl: ?*Node = null,
     index: usize,
     data: union(enum) {
         // Expressions
@@ -10,12 +10,12 @@ pub const AstNode = struct {
         var_get: struct { name: []u8 },
 
         // Statements
-        block: struct { list: std.ArrayListUnmanaged(*AstNode) },
-        var_decl: struct { name: []u8, decl_type: types.Type, expr: *AstNode },
-        var_assign: struct { name: []u8, expr: *AstNode },
+        block: struct { list: std.ArrayListUnmanaged(*Node) },
+        var_decl: struct { name: []u8, decl_type: types.Type, expr: *Node },
+        var_assign: struct { name: []u8, expr: *Node },
     },
 
-    pub fn deinit(self: *AstNode, allocator: std.mem.Allocator) void {
+    pub fn deinit(self: *Node, allocator: std.mem.Allocator) void {
         switch (self.data) {
             .integer_constant => {},
             .var_get => |*var_get| allocator.free(var_get.name),

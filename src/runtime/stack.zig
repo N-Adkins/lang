@@ -1,6 +1,6 @@
 const std = @import("std");
 
-pub const StackError = error{
+pub const Error = error{
     Overflow,
     Underflow,
 } || std.mem.Allocator.Error;
@@ -12,7 +12,7 @@ pub fn Stack(comptime T: type) type {
         items: []T,
         head: usize = 0,
 
-        pub fn init(allocator: std.mem.Allocator, size: usize) StackError!Self {
+        pub fn init(allocator: std.mem.Allocator, size: usize) Error!Self {
             const items = try allocator.alloc(T, size);
             return Self{
                 .items = items,
@@ -27,38 +27,38 @@ pub fn Stack(comptime T: type) type {
             return self.head;
         }
 
-        pub fn popFrame(self: *Self, frame: usize) StackError!void {
+        pub fn popFrame(self: *Self, frame: usize) Error!void {
             while (self.items.len > frame) {
                 _ = try self.pop();
             }
         }
 
-        pub fn peekFrameOffset(self: *Self, frame: usize, offset: usize) StackError!*T {
+        pub fn peekFrameOffset(self: *Self, frame: usize, offset: usize) Error!*T {
             if (frame +% offset > self.head) {
-                return StackError.Overflow;
+                return Error.Overflow;
             }
             return &self.items[frame + offset];
         }
 
-        pub fn push(self: *Self, item: T) StackError!void {
+        pub fn push(self: *Self, item: T) Error!void {
             if (self.head >= self.items.len) {
-                return StackError.Overflow;
+                return Error.Overflow;
             }
             self.items[self.head] = item;
             self.head += 1;
         }
 
-        pub fn pop(self: *Self) StackError!T {
+        pub fn pop(self: *Self) Error!T {
             if (self.head < self.head -% 1) {
-                return StackError.Underflow;
+                return Error.Underflow;
             }
             self.head -= 1;
             return self.items[self.head];
         }
 
-        pub fn peek(self: *Self) StackError!*T {
+        pub fn peek(self: *Self) Error!*T {
             if (self.head < self.head -% 1) {
-                return StackError.Underflow;
+                return Error.Underflow;
             }
             return &self.items[self.head - 1];
         }

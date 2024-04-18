@@ -4,7 +4,7 @@ const err = @import("error.zig");
 const lexer = @import("lexer.zig");
 const types = @import("types.zig");
 
-pub const ParseError = error{
+pub const Error = error{
     UnexpectedToken,
     UnexpectedEnd,
     UnterminatedBlock,
@@ -14,7 +14,7 @@ pub const ParseError = error{
 /// and owns the AST
 pub const Parser = struct {
     lexer: *lexer.Lexer,
-    root: ast.AstNode,
+    root: ast.Node,
     current: ?lexer.Token = null,
     previous: ?lexer.Token = null,
     err_ctx: *err.ErrorContext,
@@ -23,8 +23,8 @@ pub const Parser = struct {
     pub fn init(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, lex: *lexer.Lexer) Parser {
         const parser = Parser{
             .lexer = lex,
-            .root = ast.AstNode{ .index = 0, .data = .{ .block = .{
-                .list = std.ArrayListUnmanaged(*ast.AstNode){},
+            .root = ast.Node{ .index = 0, .data = .{ .block = .{
+                .list = std.ArrayListUnmanaged(*ast.Node){},
             } } },
             .err_ctx = err_ctx,
             .allocator = allocator,
@@ -37,7 +37,7 @@ pub const Parser = struct {
     }
 
     /// Performs all parsing of the tokens held within the passed lexer
-    pub fn parse(self: *Parser) ParseError!void {
+    pub fn parse(self: *Parser) Error!void {
         _ = self.nextToken();
         _ = self.nextToken();
         while (self.lexer.queue.len > 0) {
@@ -50,26 +50,26 @@ pub const Parser = struct {
         }
     }
 
-    fn parseTypeDecl(self: *Parser) ParseError!types.Type {
+    fn parseTypeDecl(self: *Parser) Error!types.Type {
         _ = try self.expectToken(.colon);
         const new_type = try self.parseType();
         return new_type;
     }
 
-    fn parseType(self: *Parser) ParseError!types.Type {
+    fn parseType(self: *Parser) Error!types.Type {
         const name = try self.expectToken(.identifier);
         const raw_name = self.lexer.source[name.start..name.end];
         if (types.builtin_lookup.get(raw_name)) |builtin| {
             return builtin;
         }
         try self.err_ctx.errorFromToken(.unexpected_end, "Failed to parse type", .{}, name);
-        return ParseError.UnexpectedToken;
+        return Error.UnexpectedToken;
     }
 
-    fn parseExpression(self: *Parser) ParseError!*ast.AstNode {
+    fn parseExpression(self: *Parser) Error!*ast.Node {
         if (self.previous == null) {
             try self.err_ctx.newError(.unexpected_end, "Expected expression, found end", .{}, null);
-            return ParseError.UnexpectedEnd;
+            return Error.UnexpectedEnd;
         }
 
         const expression = switch (self.previous.?.tag) {
@@ -77,16 +77,16 @@ pub const Parser = struct {
             .number => try self.parseNumberConstant(),
             else => {
                 try self.err_ctx.errorFromToken(.unexpected_token, "Expected expression, found [{s},\"{s}\"]", .{ @tagName(self.previous.?.tag), self.lexer.source[self.previous.?.start..self.previous.?.end] }, self.previous.?);
-                return ParseError.UnexpectedToken;
+                return Error.UnexpectedToken;
             },
         };
 
         return expression;
     }
 
-    fn parseVarGet(self: *Parser) ParseError!*ast.AstNode {
+    fn parseVarGet(self: *Parser) Error!*ast.Node {
         const identifier = try self.expectToken(.identifier);
-        const expression = try self.allocator.create(ast.AstNode);
+        const expression = try self.allocator.create(ast.Node);
         errdefer self.allocator.destroy(expression);
         expression.* = .{
             .index = identifier.start,
@@ -99,9 +99,9 @@ pub const Parser = struct {
         return expression;
     }
 
-    fn parseNumberConstant(self: *Parser) ParseError!*ast.AstNode {
+    fn parseNumberConstant(self: *Parser) Error!*ast.Node {
         const number = try self.expectToken(.number);
-        const expression = try self.allocator.create(ast.AstNode);
+        const expression = try self.allocator.create(ast.Node);
         const value = std.fmt.parseInt(
             @TypeOf(expression.data.integer_constant.value),
             self.lexer.source[number.start..number.end],
@@ -118,10 +118,10 @@ pub const Parser = struct {
         return expression;
     }
 
-    fn parseStatement(self: *Parser) ParseError!*ast.AstNode {
+    fn parseStatement(self: *Parser) Error!*ast.Node {
         if (self.previous == null) {
             try self.err_ctx.newError(.unexpected_end, "Expected statement, found end", .{}, null);
-            return ParseError.UnexpectedEnd;
+            return Error.UnexpectedEnd;
         }
 
         var needs_semicolon = true;
@@ -154,7 +154,7 @@ pub const Parser = struct {
         return statement;
     }
 
-    fn parseVarDecl(self: *Parser) ParseError!*ast.AstNode {
+    fn parseVarDecl(self: *Parser) Error!*ast.Node {
         _ = try self.expectToken(.keyword_var);
 
         const identifier = try self.expectToken(.identifier);
@@ -169,7 +169,7 @@ pub const Parser = struct {
             self.allocator.destroy(expression);
         }
 
-        const statement = try self.allocator.create(ast.AstNode);
+        const statement = try self.allocator.create(ast.Node);
         errdefer self.allocator.destroy(statement);
 
         statement.* = .{ .index = identifier.start, .data = .{
@@ -183,7 +183,7 @@ pub const Parser = struct {
         return statement;
     }
 
-    fn parseVarAssign(self: *Parser) ParseError!*ast.AstNode {
+    fn parseVarAssign(self: *Parser) Error!*ast.Node {
         const identifier = try self.expectToken(.identifier);
 
         _ = try self.expectToken(.equals);
@@ -194,7 +194,7 @@ pub const Parser = struct {
             self.allocator.destroy(expression);
         }
 
-        const statement = try self.allocator.create(ast.AstNode);
+        const statement = try self.allocator.create(ast.Node);
         errdefer self.allocator.destroy(statement);
 
         statement.* = .{
@@ -210,10 +210,10 @@ pub const Parser = struct {
         return statement;
     }
 
-    fn parseBlock(self: *Parser) ParseError!*ast.AstNode {
+    fn parseBlock(self: *Parser) Error!*ast.Node {
         const start = try self.expectToken(.l_curly);
 
-        var body = std.ArrayListUnmanaged(*ast.AstNode){};
+        var body = std.ArrayListUnmanaged(*ast.Node){};
         errdefer {
             for (body.items) |node| {
                 node.deinit(self.allocator);
@@ -241,12 +241,12 @@ pub const Parser = struct {
 
         if (!found_end) {
             try self.err_ctx.newError(.unterminated_block, "Failed to find end of block", .{}, start.start);
-            return ParseError.UnexpectedEnd;
+            return Error.UnexpectedEnd;
         }
 
         _ = try self.expectToken(.r_curly);
 
-        const block = try self.allocator.create(ast.AstNode);
+        const block = try self.allocator.create(ast.Node);
         block.* = .{
             .index = start.start,
             .data = .{
@@ -262,18 +262,18 @@ pub const Parser = struct {
     /// Errors if the current token doesn't have the passed tag.
     /// If it does, it runs nextToken and returns the token that matched
     /// the tag.
-    fn expectToken(self: *Parser, tag: lexer.TokenTag) ParseError!lexer.Token {
+    fn expectToken(self: *Parser, tag: lexer.TokenTag) Error!lexer.Token {
         if (self.previous) |prev| {
             if (prev.tag == tag) {
                 _ = self.nextToken();
                 return prev;
             } else {
                 try self.err_ctx.errorFromToken(.unexpected_token, "Expected token of type {s}, found [{s},\"{s}\"]", .{ @tagName(tag), @tagName(prev.tag), self.lexer.source[prev.start..prev.end] }, prev);
-                return ParseError.UnexpectedToken;
+                return Error.UnexpectedToken;
             }
         } else {
             try self.err_ctx.newError(.unexpected_end, "Expected token of type {s}, found end", .{@tagName(tag)}, null);
-            return ParseError.UnexpectedEnd;
+            return Error.UnexpectedEnd;
         }
     }
 

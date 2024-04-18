@@ -4,7 +4,7 @@ const byte = @import("../../runtime/bytecode.zig");
 const err = @import("../error.zig");
 const value = @import("../../runtime/value.zig");
 
-pub const GenError = error{
+pub const Error = error{
     ConstantOverflow,
     LocalOverflow,
 } || std.mem.Allocator.Error;
@@ -15,24 +15,24 @@ const FuncFrame = struct {
     map: std.AutoHashMapUnmanaged(*anyopaque, u8) = std.AutoHashMapUnmanaged(*anyopaque, u8){},
 };
 
-pub const CodeGenPass = struct {
+pub const Pass = struct {
     const FrameNode = std.DoublyLinkedList(FuncFrame).Node;
     func_stack: std.DoublyLinkedList(FuncFrame) = std.DoublyLinkedList(FuncFrame){},
     bytecode: std.ArrayListUnmanaged(u8) = std.ArrayListUnmanaged(u8){},
     constants: std.ArrayListUnmanaged(value.Value) = std.ArrayListUnmanaged(value.Value){},
-    root: *ast.AstNode,
+    root: *ast.Node,
     err_ctx: *err.ErrorContext,
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, root: *ast.AstNode) GenError!CodeGenPass {
-        return CodeGenPass{
+    pub fn init(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, root: *ast.Node) Error!Pass {
+        return Pass{
             .root = root,
             .err_ctx = err_ctx,
             .allocator = allocator,
         };
     }
 
-    pub fn deinit(self: *CodeGenPass) void {
+    pub fn deinit(self: *Pass) void {
         while (self.func_stack.first) |_| {
             self.popFrame();
         }
@@ -40,11 +40,11 @@ pub const CodeGenPass = struct {
         self.constants.deinit(self.allocator);
     }
 
-    pub fn run(self: *CodeGenPass) GenError!void {
+    pub fn run(self: *Pass) Error!void {
         try self.genFunc(self.root);
     }
 
-    fn genFunc(self: *CodeGenPass, body: *ast.AstNode) GenError!void {
+    fn genFunc(self: *Pass, body: *ast.Node) Error!void {
         _ = try self.pushFrame();
         try self.genNode(body);
         const frame = self.func_stack.first.?.data;
@@ -53,7 +53,7 @@ pub const CodeGenPass = struct {
         self.popFrame();
     }
 
-    fn genNode(self: *CodeGenPass, node: *ast.AstNode) GenError!void {
+    fn genNode(self: *Pass, node: *ast.Node) Error!void {
         switch (node.data) {
             .integer_constant => |int_constant| {
                 try self.pushConstant(value.Value{ .data = .{ .number = int_constant.value } });
@@ -85,18 +85,18 @@ pub const CodeGenPass = struct {
         }
     }
 
-    fn pushByte(self: *CodeGenPass, item: u8) GenError!void {
+    fn pushByte(self: *Pass, item: u8) Error!void {
         try self.bytecode.append(self.allocator, item);
     }
 
-    fn pushOp(self: *CodeGenPass, op: byte.Opcode) GenError!void {
+    fn pushOp(self: *Pass, op: byte.Opcode) Error!void {
         try self.bytecode.append(self.allocator, @intFromEnum(op));
     }
 
-    fn pushConstant(self: *CodeGenPass, item: value.Value) GenError!void {
+    fn pushConstant(self: *Pass, item: value.Value) Error!void {
         if (self.constants.items.len >= 0xFF) {
             try self.err_ctx.newError(.constant_overflow, "Number of constants exceeds 0xFF", .{}, null);
-            return GenError.ConstantOverflow;
+            return Error.ConstantOverflow;
         }
         const index = self.constants.items.len;
         try self.constants.append(self.allocator, item);
@@ -104,25 +104,25 @@ pub const CodeGenPass = struct {
         try self.pushByte(@truncate(index));
     }
 
-    fn pushLocal(self: *CodeGenPass, decl: *ast.AstNode) GenError!u8 {
+    fn pushLocal(self: *Pass, decl: *ast.Node) Error!u8 {
         const head = self.func_stack.first.?;
         const index = head.data.local_count;
         try head.data.map.put(self.allocator, @ptrCast(decl), index);
         if (head.data.local_count +% 1 < head.data.local_count) {
             try self.err_ctx.newError(.local_overflow, "Number of locals exceeds 0xFF", .{}, null);
-            return GenError.ConstantOverflow;
+            return Error.ConstantOverflow;
         }
         head.data.local_count += 1;
         return index;
     }
 
-    fn getLocal(self: *CodeGenPass, decl: *ast.AstNode) GenError!u8 {
+    fn getLocal(self: *Pass, decl: *ast.Node) Error!u8 {
         const head = self.func_stack.first.?;
         const index = head.data.map.get(@ptrCast(decl)).?;
         return index;
     }
 
-    fn pushFrame(self: *CodeGenPass) GenError!*FuncFrame {
+    fn pushFrame(self: *Pass) Error!*FuncFrame {
         const main_node = try self.allocator.create(FrameNode);
         main_node.data = FuncFrame{
             .byte_start = self.bytecode.items.len,
@@ -131,7 +131,7 @@ pub const CodeGenPass = struct {
         return &self.func_stack.first.?.data;
     }
 
-    fn popFrame(self: *CodeGenPass) void {
+    fn popFrame(self: *Pass) void {
         const head = self.func_stack.popFirst().?;
         head.data.map.deinit(self.allocator);
         self.allocator.destroy(head);

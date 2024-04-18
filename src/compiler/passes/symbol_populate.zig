@@ -3,7 +3,7 @@ const ast = @import("../ast.zig");
 const err = @import("../error.zig");
 const types = @import("../types.zig");
 
-pub const SymbolPassError = error{
+pub const Error = error{
     SymbolNotFound,
     SymbolShadowing,
     TypeMismatch,
@@ -13,7 +13,7 @@ const SymbolStack = struct {
     const Node = struct {
         next: ?*Node = null,
         prev: ?*Node = null,
-        symbol: *ast.AstNode,
+        symbol: *ast.Node,
     };
     allocator: std.mem.Allocator,
     front: ?*Node = null,
@@ -34,7 +34,7 @@ const SymbolStack = struct {
         }
     }
 
-    pub fn push(self: *SymbolStack, symbol: *ast.AstNode) SymbolPassError!void {
+    pub fn push(self: *SymbolStack, symbol: *ast.Node) Error!void {
         const node = try self.allocator.create(Node);
         node.symbol = symbol;
         node.next = self.front;
@@ -44,7 +44,7 @@ const SymbolStack = struct {
         self.front = node;
     }
 
-    pub fn pop(self: *SymbolStack) ?*ast.AstNode {
+    pub fn pop(self: *SymbolStack) ?*ast.Node {
         if (self.front) |front| {
             const node = front.symbol;
             self.front = front.next;
@@ -54,7 +54,7 @@ const SymbolStack = struct {
         return null;
     }
 
-    pub fn find(self: *SymbolStack, name: []const u8) ?*ast.AstNode {
+    pub fn find(self: *SymbolStack, name: []const u8) ?*ast.Node {
         var iter = self.front;
         while (iter) |node| {
             iter = node.next;
@@ -73,14 +73,14 @@ const SymbolStack = struct {
 };
 
 // Naive stack implementation for now, can swap to tree or map later on
-pub const SymbolPass = struct {
+pub const Pass = struct {
     err_ctx: *err.ErrorContext,
     allocator: std.mem.Allocator,
     stack: SymbolStack,
-    root: *ast.AstNode,
+    root: *ast.Node,
 
-    pub fn init(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, root: *ast.AstNode) SymbolPass {
-        return SymbolPass{
+    pub fn init(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, root: *ast.Node) Pass {
+        return Pass{
             .err_ctx = err_ctx,
             .allocator = allocator,
             .stack = SymbolStack{ .allocator = allocator },
@@ -88,15 +88,15 @@ pub const SymbolPass = struct {
         };
     }
 
-    pub fn deinit(self: *SymbolPass) void {
+    pub fn deinit(self: *Pass) void {
         while (self.stack.pop()) |_| {}
     }
 
-    pub fn run(self: *SymbolPass) SymbolPassError!void {
+    pub fn run(self: *Pass) Error!void {
         try self.populateNode(self.root);
     }
 
-    fn populateNode(self: *SymbolPass, node: *ast.AstNode) SymbolPassError!void {
+    fn populateNode(self: *Pass, node: *ast.Node) Error!void {
         // Checking AST nodes that need a valid symbol
         const get_symbol: ?[]const u8 = switch (node.data) {
             .var_get => |var_get| var_get.name,
@@ -108,7 +108,7 @@ pub const SymbolPass = struct {
                 node.symbol_decl = found;
             } else {
                 try self.err_ctx.newError(.symbol_not_found, "Failed to locate symbol \"{s}\"", .{symbol}, node.index);
-                return SymbolPassError.SymbolNotFound;
+                return Error.SymbolNotFound;
             }
         }
 
@@ -125,7 +125,7 @@ pub const SymbolPass = struct {
             .var_decl => |var_decl| {
                 if (self.stack.find(var_decl.name)) |_| {
                     try self.err_ctx.newError(.symbol_shadowing, "Found symbol shadowing previous declaration, \"{s}\"", .{var_decl.name}, node.index);
-                    return SymbolPassError.SymbolShadowing;
+                    return Error.SymbolShadowing;
                 }
                 try self.stack.push(node);
                 try self.populateNode(var_decl.expr);

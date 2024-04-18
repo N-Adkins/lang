@@ -44,14 +44,14 @@ fn runPasses(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, source: [
     defer parse.deinit();
     try parse.parse();
 
-    var symbol_populate_pass = symbol_pass.SymbolPass.init(allocator, err_ctx, &parse.root);
+    var symbol_populate_pass = symbol_pass.Pass.init(allocator, err_ctx, &parse.root);
     defer symbol_populate_pass.deinit();
     try symbol_populate_pass.run();
 
-    var type_check_pass = type_pass.TypePass.init(err_ctx, &parse.root);
+    var type_check_pass = type_pass.Pass.init(err_ctx, &parse.root);
     try type_check_pass.run();
 
-    var codegen_pass = try code_pass.CodeGenPass.init(allocator, err_ctx, &parse.root);
+    var codegen_pass = try code_pass.Pass.init(allocator, err_ctx, &parse.root);
     defer codegen_pass.deinit();
     try codegen_pass.run();
 

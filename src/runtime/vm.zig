@@ -3,11 +3,11 @@ const byte = @import("bytecode.zig");
 const stack = @import("stack.zig");
 const value = @import("value.zig");
 
-pub const RuntimeError = error{
+pub const Error = error{
     MalformedInstruction,
     InvalidConstant,
     InvalidCallFrame,
-} || stack.StackError;
+} || stack.Error;
 
 const CallFrame = struct {
     index: usize,
@@ -21,7 +21,7 @@ pub const VM = struct {
     pc: usize = 0,
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator, bytes: []const u8, constants: []const value.Value) RuntimeError!VM {
+    pub fn init(allocator: std.mem.Allocator, bytes: []const u8, constants: []const value.Value) Error!VM {
         var vm = VM{
             .bytes = bytes,
             .constants = constants,
@@ -38,7 +38,7 @@ pub const VM = struct {
         self.call_stack.deinit(self.allocator);
     }
 
-    pub fn run(self: *VM) RuntimeError!void {
+    pub fn run(self: *VM) Error!void {
         while (self.pc < self.bytes.len) {
             try self.nextInstr();
         }
@@ -46,7 +46,7 @@ pub const VM = struct {
         std.debug.print("{any}\n", .{result});
     }
 
-    fn nextInstr(self: *VM) RuntimeError!void {
+    fn nextInstr(self: *VM) Error!void {
         const op: byte.Opcode = @enumFromInt(try self.nextByte());
         switch (op) {
             .CONSTANT => try self.opConstant(),
@@ -56,16 +56,16 @@ pub const VM = struct {
         }
     }
 
-    fn opConstant(self: *VM) RuntimeError!void {
+    fn opConstant(self: *VM) Error!void {
         const index = try self.nextByte();
         if (index >= self.constants.len) {
-            return RuntimeError.InvalidConstant;
+            return Error.InvalidConstant;
         }
         const constant = self.constants[index];
         try self.eval_stack.push(constant);
     }
 
-    fn opVarSet(self: *VM) RuntimeError!void {
+    fn opVarSet(self: *VM) Error!void {
         const offset = try self.nextByte();
         const frame = try self.call_stack.peek();
         const value_ptr = try self.eval_stack.peekFrameOffset(frame.index, offset);
@@ -73,23 +73,23 @@ pub const VM = struct {
         value_ptr.* = new_value;
     }
 
-    fn opVarGet(self: *VM) RuntimeError!void {
+    fn opVarGet(self: *VM) Error!void {
         const offset = try self.nextByte();
         const frame = try self.call_stack.peek();
         const value_ptr = try self.eval_stack.peekFrameOffset(frame.index, offset);
         try self.eval_stack.push(value_ptr.*);
     }
 
-    fn opStackAlloc(self: *VM) RuntimeError!void {
+    fn opStackAlloc(self: *VM) Error!void {
         const amount = try self.nextByte();
         for (0..amount) |_| {
             try self.eval_stack.push(value.Value{ .data = .uninitialized });
         }
     }
 
-    fn nextByte(self: *VM) RuntimeError!u8 {
+    fn nextByte(self: *VM) Error!u8 {
         if (self.pc >= self.bytes.len) {
-            return RuntimeError.MalformedInstruction;
+            return Error.MalformedInstruction;
         }
         const ret = self.bytes[self.pc];
         self.pc += 1;

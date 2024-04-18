@@ -39,7 +39,7 @@ pub const Token = struct {
     end: usize,
 };
 
-pub const LexerError = error{
+pub const Error = error{
     UnexpectedCharacter,
 } || std.mem.Allocator.Error;
 
@@ -80,7 +80,7 @@ pub const Lexer = struct {
         return null;
     }
 
-    pub fn tokenize(self: *Lexer) LexerError!void {
+    pub fn tokenize(self: *Lexer) Error!void {
         while (self.index < self.source.len) {
             self.skipWhitespace();
             if (self.peekChar() == null) {
@@ -90,7 +90,7 @@ pub const Lexer = struct {
         }
     }
 
-    fn tokenizeNext(self: *Lexer) LexerError!void {
+    fn tokenizeNext(self: *Lexer) Error!void {
         std.debug.assert(self.peekChar() != null);
         const next = self.peekChar().?;
         if (isNumber(next)) {
@@ -102,7 +102,7 @@ pub const Lexer = struct {
         }
     }
 
-    fn tokenizeNumber(self: *Lexer) LexerError!void {
+    fn tokenizeNumber(self: *Lexer) Error!void {
         std.debug.assert(self.peekChar() != null);
         std.debug.assert(isNumber(self.peekChar().?));
         const start = self.index;
@@ -116,7 +116,7 @@ pub const Lexer = struct {
         try self.pushToken(Token{ .tag = .number, .start = start, .end = end });
     }
 
-    fn tokenizeIdentifier(self: *Lexer) LexerError!void {
+    fn tokenizeIdentifier(self: *Lexer) Error!void {
         std.debug.assert(self.peekChar() != null);
         std.debug.assert(isIdentifier(self.peekChar().?));
         const start = self.index;
@@ -131,7 +131,7 @@ pub const Lexer = struct {
         try self.pushToken(Token{ .tag = tag, .start = start, .end = end });
     }
 
-    fn tokenizeSpecial(self: *Lexer) LexerError!void {
+    fn tokenizeSpecial(self: *Lexer) Error!void {
         std.debug.assert(self.peekChar() != null);
         const start = self.index;
         const char = self.nextChar().?;
@@ -200,14 +200,14 @@ pub const Lexer = struct {
             ';' => tag = .semicolon,
             else => {
                 try self.err_ctx.newError(.unexpected_character, "Unexpected character: '{c}'", .{char}, start);
-                return LexerError.UnexpectedCharacter;
+                return Error.UnexpectedCharacter;
             },
         }
         const end = self.index;
         try self.pushToken(Token{ .tag = tag, .start = start, .end = end });
     }
 
-    fn pushToken(self: *Lexer, token: Token) LexerError!void {
+    fn pushToken(self: *Lexer, token: Token) Error!void {
         const node = try self.allocator.create(std.DoublyLinkedList(Token).Node);
         node.* = .{ .prev = null, .next = null, .data = token };
         self.queue.append(node);
