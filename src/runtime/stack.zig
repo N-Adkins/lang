@@ -1,3 +1,5 @@
+//! Generic Stack Structure
+
 const std = @import("std");
 
 pub const Error = error{
@@ -5,6 +7,8 @@ pub const Error = error{
     Underflow,
 } || std.mem.Allocator.Error;
 
+/// Stack structure used for the runtime, like the evaluation stack and the
+/// call stack. Static stack size.
 pub fn Stack(comptime T: type) type {
     return struct {
         const Self = @This();

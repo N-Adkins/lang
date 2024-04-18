@@ -1,3 +1,6 @@
+//! Monolithic runtime structure, executes bytecode with other data like
+//! constants
+
 const std = @import("std");
 const byte = @import("bytecode.zig");
 const stack = @import("stack.zig");
@@ -9,10 +12,12 @@ pub const Error = error{
     InvalidCallFrame,
 } || stack.Error;
 
+/// Used in call stack to maintain function calls
 const CallFrame = struct {
     index: usize,
 };
 
+/// Virtual machine, executes bytecode and maintains all runtime stacks
 pub const VM = struct {
     bytes: []const u8,
     constants: []const value.Value,
@@ -38,6 +43,7 @@ pub const VM = struct {
         self.call_stack.deinit(self.allocator);
     }
 
+    /// Runs VM
     pub fn run(self: *VM) Error!void {
         while (self.pc < self.bytes.len) {
             try self.nextInstr();
@@ -46,6 +52,7 @@ pub const VM = struct {
         std.debug.print("{any}\n", .{result});
     }
 
+    /// Executes the next instruction
     fn nextInstr(self: *VM) Error!void {
         const op: byte.Opcode = @enumFromInt(try self.nextByte());
         switch (op) {
@@ -87,6 +94,7 @@ pub const VM = struct {
         }
     }
 
+    /// Fetches the next byte and errors if there isn't one
     fn nextByte(self: *VM) Error!u8 {
         if (self.pc >= self.bytes.len) {
             return Error.MalformedInstruction;

@@ -1,3 +1,5 @@
+//! Lexing Pass, handles turning source code into tokens
+
 const std = @import("std");
 const err = @import("error.zig");
 
@@ -28,6 +30,7 @@ pub const TokenTag = enum {
     keyword_if,
 };
 
+/// Used when parsing identifiers
 const keyword_lookup = std.ComptimeStringMap(TokenTag, .{
     .{ "var", TokenTag.keyword_var },
     .{ "if", TokenTag.keyword_if },
@@ -43,6 +46,8 @@ pub const Error = error{
     UnexpectedCharacter,
 } || std.mem.Allocator.Error;
 
+/// Lexer pass, pre-generates all tokens into a queue and feeds them back. It is not
+/// incrementally tokenized.
 pub const Lexer = struct {
     source: []const u8,
     index: usize = 0,
@@ -64,6 +69,7 @@ pub const Lexer = struct {
         }
     }
 
+    /// Returns most recent token
     pub fn peekToken(self: *Lexer) ?*Token {
         if (self.queue.first) |node| {
             return &node.data;
@@ -71,6 +77,7 @@ pub const Lexer = struct {
         return null;
     }
 
+    /// Pops token off of queue and returns it
     pub fn nextToken(self: *Lexer) ?Token {
         if (self.queue.popFirst()) |node| {
             const token = node.data;
@@ -80,6 +87,7 @@ pub const Lexer = struct {
         return null;
     }
 
+    /// Queues all tokens in the contained source
     pub fn tokenize(self: *Lexer) Error!void {
         while (self.index < self.source.len) {
             self.skipWhitespace();

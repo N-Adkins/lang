@@ -1,3 +1,5 @@
+//! Runtime bytecode, handles all special cases like Opcodes
+
 const std = @import("std");
 
 pub const Opcode = enum(u8) {

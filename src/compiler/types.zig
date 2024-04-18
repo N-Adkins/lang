@@ -15,6 +15,7 @@ pub const Type = union(enum) {
     }
 };
 
+/// Should probably just make these keywords
 pub const builtin_lookup = std.ComptimeStringMap(Type, .{
     .{ "number", Type.number },
     .{ "void", Type.void },

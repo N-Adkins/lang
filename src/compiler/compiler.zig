@@ -1,3 +1,5 @@
+//! Wrapper over all compiler passes that executes them all
+
 const std = @import("std");
 const err = @import("error.zig");
 const lexer = @import("lexer.zig");
@@ -7,6 +9,8 @@ const code_pass = @import("passes/codegen.zig");
 const symbol_pass = @import("passes/symbol_populate.zig");
 const type_pass = @import("passes/type_check.zig");
 
+/// Container for the bytecode and constants that are obtained
+/// during the code generation pass
 pub const CompileResult = struct {
     bytecode: []const u8,
     constants: []const value.Value,
@@ -17,7 +21,7 @@ pub const CompileResult = struct {
     }
 };
 
-/// Returns bytecode on success
+/// Compiles the passed source code into bytecode and related data
 pub fn compile(allocator: std.mem.Allocator, source: []const u8) anyerror!CompileResult {
     var err_ctx = err.ErrorContext{
         .source = source,
@@ -35,6 +39,7 @@ pub fn compile(allocator: std.mem.Allocator, source: []const u8) anyerror!Compil
     return result;
 }
 
+/// Wrapper over the compiler passes so that handling errors is simpler in the compile function
 fn runPasses(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, source: []const u8) anyerror!CompileResult {
     var lex = lexer.Lexer.init(allocator, err_ctx, source);
     defer lex.deinit();

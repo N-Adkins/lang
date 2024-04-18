@@ -13,6 +13,8 @@ pub const ErrorTag = enum(u16) {
     local_overflow,
 };
 
+/// Error metadata, contains all information needed to construct
+/// an error message except for the source code
 pub const Error = struct {
     tag: ErrorTag,
     message: []const u8,
@@ -27,6 +29,8 @@ pub const Error = struct {
     }
 };
 
+/// Error context that should be passed to all compilation passes, allows
+/// error queueing and can form full error messages
 pub const ErrorContext = struct {
     source: []const u8,
     errors: std.DoublyLinkedList(Error) = std.DoublyLinkedList(Error){},

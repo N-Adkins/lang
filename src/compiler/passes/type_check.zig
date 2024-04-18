@@ -1,3 +1,6 @@
+//! Type-checking pass, assumes symbols have been populated and ensures
+//! that all types are correct.
+
 const std = @import("std");
 const ast = @import("../ast.zig");
 const err = @import("../error.zig");

@@ -1,3 +1,5 @@
+//! Symbol population pass, resolves all symbols and links symbols to their declarations
+
 const std = @import("std");
 const ast = @import("../ast.zig");
 const err = @import("../error.zig");
@@ -9,6 +11,8 @@ pub const Error = error{
     TypeMismatch,
 } || std.mem.Allocator.Error;
 
+/// Helper to assist in scoping, allows user to obtain a "frame" and then later
+/// pop everything in the stack that is after the frame.
 const SymbolStack = struct {
     const Node = struct {
         next: ?*Node = null,
@@ -54,6 +58,7 @@ const SymbolStack = struct {
         return null;
     }
 
+    /// Looks for a symbol in the stack. Fairly inefficient
     pub fn find(self: *SymbolStack, name: []const u8) ?*ast.Node {
         var iter = self.front;
         while (iter) |node| {
@@ -72,7 +77,6 @@ const SymbolStack = struct {
     }
 };
 
-// Naive stack implementation for now, can swap to tree or map later on
 pub const Pass = struct {
     err_ctx: *err.ErrorContext,
     allocator: std.mem.Allocator,

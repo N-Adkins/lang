@@ -1,3 +1,5 @@
+//! Parsing Pass, handles turning tokens into an AST
+
 const std = @import("std");
 const ast = @import("ast.zig");
 const err = @import("error.zig");
@@ -10,8 +12,7 @@ pub const Error = error{
     UnterminatedBlock,
 } || std.mem.Allocator.Error;
 
-/// Parsing state, holds a reference to the lexer
-/// and owns the AST
+/// Parsing state, holds a reference to the lexer and owns the AST
 pub const Parser = struct {
     lexer: *lexer.Lexer,
     root: ast.Node,

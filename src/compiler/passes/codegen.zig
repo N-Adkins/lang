@@ -1,3 +1,5 @@
+//! Code Generation Pass, converts AST into bytecode and a constant table.
+
 const std = @import("std");
 const ast = @import("../ast.zig");
 const byte = @import("../../runtime/bytecode.zig");
@@ -9,6 +11,8 @@ pub const Error = error{
     LocalOverflow,
 } || std.mem.Allocator.Error;
 
+/// Used in function stack to figure out how many local variables are in each stack frame.
+/// Later on this becomes a STACK_ALLOC instruction to reserve local variable space.
 const FuncFrame = struct {
     byte_start: usize,
     local_count: u8 = 0,
@@ -44,6 +48,7 @@ pub const Pass = struct {
         try self.genFunc(self.root);
     }
 
+    /// Wrapper over genNode but with handling local variable allocation
     fn genFunc(self: *Pass, body: *ast.Node) Error!void {
         _ = try self.pushFrame();
         try self.genNode(body);
@@ -85,14 +90,17 @@ pub const Pass = struct {
         }
     }
 
+    /// Pushes a byte into the bytecode
     fn pushByte(self: *Pass, item: u8) Error!void {
         try self.bytecode.append(self.allocator, item);
     }
 
+    /// Pushes an opcode into the bytecode as a byte
     fn pushOp(self: *Pass, op: byte.Opcode) Error!void {
         try self.bytecode.append(self.allocator, @intFromEnum(op));
     }
 
+    /// Pushes a constant onto the constant table
     fn pushConstant(self: *Pass, item: value.Value) Error!void {
         if (self.constants.items.len >= 0xFF) {
             try self.err_ctx.newError(.constant_overflow, "Number of constants exceeds 0xFF", .{}, null);
@@ -104,6 +112,7 @@ pub const Pass = struct {
         try self.pushByte(@truncate(index));
     }
 
+    /// Pushes a local variable onto the current function frame
     fn pushLocal(self: *Pass, decl: *ast.Node) Error!u8 {
         const head = self.func_stack.first.?;
         const index = head.data.local_count;
@@ -116,12 +125,15 @@ pub const Pass = struct {
         return index;
     }
 
+    /// Checks the current function frame for a local variable based on its
+    /// declaration
     fn getLocal(self: *Pass, decl: *ast.Node) Error!u8 {
         const head = self.func_stack.first.?;
         const index = head.data.map.get(@ptrCast(decl)).?;
         return index;
     }
 
+    /// Pushes a new function frame
     fn pushFrame(self: *Pass) Error!*FuncFrame {
         const main_node = try self.allocator.create(FrameNode);
         main_node.data = FuncFrame{
@@ -131,6 +143,7 @@ pub const Pass = struct {
         return &self.func_stack.first.?.data;
     }
 
+    /// Pops a function frame
     fn popFrame(self: *Pass) void {
         const head = self.func_stack.popFirst().?;
         head.data.map.deinit(self.allocator);

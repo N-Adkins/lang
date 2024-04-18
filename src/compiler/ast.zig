@@ -1,6 +1,10 @@
+//! Abstract Syntax Tree, used in passes and code generation
+
 const std = @import("std");
 const types = @import("types.zig");
 
+/// Abstract Syntax Tree Node, contains both
+/// statements and expressions
 pub const Node = struct {
     symbol_decl: ?*Node = null,
     index: usize,
@@ -15,6 +19,7 @@ pub const Node = struct {
         var_assign: struct { name: []u8, expr: *Node },
     },
 
+    /// Does not assume that self is heap allocated
     pub fn deinit(self: *Node, allocator: std.mem.Allocator) void {
         switch (self.data) {
             .integer_constant => {},
@@ -27,13 +32,13 @@ pub const Node = struct {
                 block.*.list.deinit(allocator);
             },
             .var_decl => |*var_decl| {
-                allocator.free(var_decl.name);
                 var_decl.expr.deinit(allocator);
+                allocator.free(var_decl.name);
                 allocator.destroy(var_decl.expr);
             },
             .var_assign => |*var_assign| {
-                allocator.free(var_assign.name);
                 var_assign.expr.deinit(allocator);
+                allocator.free(var_assign.name);
                 allocator.destroy(var_assign.expr);
             },
         }
