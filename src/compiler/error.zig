@@ -111,19 +111,21 @@ pub const ErrorContext = struct {
     }
 
     fn getLine(self: *ErrorContext, index: usize) struct { line: []const u8, num: usize } {
-        var iter = std.mem.tokenizeScalar(u8, self.source, '\n');
         var line_num: usize = 1;
-        var i: usize = 0;
-        const line = blk: {
-            while (iter.next()) |slice| {
-                if (index >= i and index <= i + slice.len) {
-                    break :blk slice;
+        var start: usize = 0;
+
+        for (0..self.source.len) |i| {
+            const byte = self.source[i];
+            if (byte == '\n' or i == self.source.len - 1) {
+                if (index >= start and index <= i) {
+                    const end = if (i == self.source.len - 1) i + 1 else i;
+                    return .{ .line = self.source[start..end], .num = line_num };
                 }
                 line_num += 1;
-                i += slice.len;
+                start = i + 1;
             }
-            unreachable;
-        };
-        return .{ .line = line, .num = line_num };
+        }
+
+        unreachable;
     }
 };

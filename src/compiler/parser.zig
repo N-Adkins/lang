@@ -39,8 +39,13 @@ pub const Parser = struct {
     /// Performs all parsing of the tokens held within the passed lexer
     pub fn parse(self: *Parser) ParseError!void {
         _ = self.nextToken();
+        _ = self.nextToken();
         while (self.lexer.queue.len > 0) {
             const statement = try self.parseStatement();
+            errdefer {
+                statement.deinit(self.allocator);
+                self.allocator.destroy(statement);
+            }
             try self.root.data.block.list.append(self.allocator, statement);
         }
     }
@@ -62,16 +67,16 @@ pub const Parser = struct {
     }
 
     fn parseExpression(self: *Parser) ParseError!*ast.AstNode {
-        if (self.current == null) {
+        if (self.previous == null) {
             try self.err_ctx.newError(.unexpected_end, "Expected expression, found end", .{}, null);
             return ParseError.UnexpectedEnd;
         }
 
-        const expression = switch (self.current.?.tag) {
+        const expression = switch (self.previous.?.tag) {
             .identifier => try self.parseVarGet(),
             .number => try self.parseNumberConstant(),
             else => {
-                try self.err_ctx.errorFromToken(.unexpected_token, "Expected expression, found [{s},\"{s}\"]", .{ @tagName(self.current.?.tag), self.lexer.source[self.current.?.start..self.current.?.end] }, self.current.?);
+                try self.err_ctx.errorFromToken(.unexpected_token, "Expected expression, found [{s},\"{s}\"]", .{ @tagName(self.previous.?.tag), self.lexer.source[self.previous.?.start..self.previous.?.end] }, self.previous.?);
                 return ParseError.UnexpectedToken;
             },
         };
@@ -114,15 +119,23 @@ pub const Parser = struct {
     }
 
     fn parseStatement(self: *Parser) ParseError!*ast.AstNode {
-        if (self.current == null) {
+        if (self.previous == null) {
             try self.err_ctx.newError(.unexpected_end, "Expected statement, found end", .{}, null);
             return ParseError.UnexpectedEnd;
         }
 
         var needs_semicolon = true;
-        const statement = switch (self.current.?.tag) {
+        const statement = switch (self.previous.?.tag) {
             .keyword_var => try self.parseVarDecl(),
-            .identifier => try self.parseVarAssign(),
+            .identifier => blk: {
+                if (self.current) |current| {
+                    switch (current.tag) {
+                        .equals => break :blk try self.parseVarAssign(),
+                        else => {},
+                    }
+                }
+                break :blk try self.parseExpression();
+            },
             .l_curly => blk: {
                 needs_semicolon = false;
                 break :blk try self.parseBlock();
@@ -151,6 +164,11 @@ pub const Parser = struct {
         _ = try self.expectToken(.equals);
 
         const expression = try self.parseExpression();
+        errdefer {
+            expression.deinit(self.allocator);
+            self.allocator.destroy(expression);
+        }
+
         const statement = try self.allocator.create(ast.AstNode);
         errdefer self.allocator.destroy(statement);
 
@@ -171,6 +189,11 @@ pub const Parser = struct {
         _ = try self.expectToken(.equals);
 
         const expression = try self.parseExpression();
+        errdefer {
+            expression.deinit(self.allocator);
+            self.allocator.destroy(expression);
+        }
+
         const statement = try self.allocator.create(ast.AstNode);
         errdefer self.allocator.destroy(statement);
 
@@ -194,15 +217,23 @@ pub const Parser = struct {
         errdefer {
             for (body.items) |node| {
                 node.deinit(self.allocator);
+                self.allocator.destroy(node);
             }
+            body.deinit(self.allocator);
         }
 
         const found_end = blk: {
-            while (self.current) |token| {
+            while (self.previous) |token| {
                 if (token.tag == .r_curly) {
                     break :blk true;
                 }
+
                 const statement = try self.parseStatement();
+                errdefer {
+                    statement.deinit(self.allocator);
+                    self.allocator.destroy(statement);
+                }
+
                 try body.append(self.allocator, statement);
             }
             break :blk false;
@@ -232,12 +263,12 @@ pub const Parser = struct {
     /// If it does, it runs nextToken and returns the token that matched
     /// the tag.
     fn expectToken(self: *Parser, tag: lexer.TokenTag) ParseError!lexer.Token {
-        if (self.current) |current| {
-            if (current.tag == tag) {
+        if (self.previous) |prev| {
+            if (prev.tag == tag) {
                 _ = self.nextToken();
-                return current;
+                return prev;
             } else {
-                try self.err_ctx.errorFromToken(.unexpected_token, "Expected token of type {s}, found [{s},\"{s}\"]", .{ @tagName(tag), @tagName(current.tag), self.lexer.source[current.start..current.end] }, current);
+                try self.err_ctx.errorFromToken(.unexpected_token, "Expected token of type {s}, found [{s},\"{s}\"]", .{ @tagName(tag), @tagName(prev.tag), self.lexer.source[prev.start..prev.end] }, prev);
                 return ParseError.UnexpectedToken;
             }
         } else {
@@ -251,6 +282,6 @@ pub const Parser = struct {
     fn nextToken(self: *Parser) ?lexer.Token {
         self.previous = self.current;
         self.current = self.lexer.nextToken();
-        return self.current;
+        return self.previous;
     }
 };

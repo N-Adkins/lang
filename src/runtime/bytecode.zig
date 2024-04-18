@@ -1,9 +1,10 @@
 const std = @import("std");
 
 pub const Opcode = enum(u8) {
-    CONSTANT, // u8 constant index
-    VAR_SET, // u8 frame offset
-    VAR_GET, // u8 frame offset
+    CONSTANT, // u8 constant index, pushes constant to stack
+    VAR_SET, // u8 frame offset, pops value off of stack and assigns variable to it
+    VAR_GET, // u8 frame offset, pushes value from variable onto stack
+    STACK_ALLOC, // u8 amount of allocations to make, used to initialize memory for local variables
 };
 
 pub fn dumpBytecode(bytes: []const u8) void {
@@ -22,6 +23,10 @@ pub fn dumpBytecode(bytes: []const u8) void {
                 i += 1;
             },
             .VAR_GET => {
+                std.debug.print("0x{X:0>2}\n", .{bytes[i]});
+                i += 1;
+            },
+            .STACK_ALLOC => {
                 std.debug.print("0x{X:0>2}\n", .{bytes[i]});
                 i += 1;
             },

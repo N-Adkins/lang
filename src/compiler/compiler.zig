@@ -2,29 +2,40 @@ const std = @import("std");
 const err = @import("error.zig");
 const lexer = @import("lexer.zig");
 const parser = @import("parser.zig");
+const value = @import("../runtime/value.zig");
 const code_pass = @import("passes/codegen.zig");
 const symbol_pass = @import("passes/symbol_populate.zig");
 const type_pass = @import("passes/type_check.zig");
 
+pub const CompileResult = struct {
+    bytecode: []const u8,
+    constants: []const value.Value,
+
+    pub fn deinit(self: *CompileResult, allocator: std.mem.Allocator) void {
+        allocator.free(self.bytecode);
+        allocator.free(self.constants);
+    }
+};
+
 /// Returns bytecode on success
-pub fn compile(allocator: std.mem.Allocator, source: []const u8) anyerror![]const u8 {
+pub fn compile(allocator: std.mem.Allocator, source: []const u8) anyerror!CompileResult {
     var err_ctx = err.ErrorContext{
         .source = source,
         .allocator = allocator,
     };
     defer err_ctx.deinit();
 
-    const bytecode = runPasses(allocator, &err_ctx, source) catch |comp_err| {
+    const result = runPasses(allocator, &err_ctx, source) catch |comp_err| {
         if (err_ctx.hasErrors()) {
             err_ctx.printErrors();
         }
         return comp_err;
     };
 
-    return bytecode;
+    return result;
 }
 
-fn runPasses(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, source: []const u8) anyerror![]const u8 {
+fn runPasses(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, source: []const u8) anyerror!CompileResult {
     var lex = lexer.Lexer.init(allocator, err_ctx, source);
     defer lex.deinit();
     try lex.tokenize();
@@ -45,5 +56,7 @@ fn runPasses(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, source: [
     try codegen_pass.run();
 
     const bytecode = try allocator.dupe(u8, codegen_pass.bytecode.items);
-    return bytecode;
+    const constants = try allocator.dupe(value.Value, codegen_pass.constants.items);
+
+    return CompileResult{ .bytecode = bytecode, .constants = constants };
 }

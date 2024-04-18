@@ -22,13 +22,15 @@ pub const VM = struct {
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator, bytes: []const u8, constants: []const value.Value) RuntimeError!VM {
-        return VM{
+        var vm = VM{
             .bytes = bytes,
             .constants = constants,
-            .eval_stack = stack.Stack(value.Value).init(allocator, 0xFF),
-            .call_stack = stack.Stack(usize).init(allocator, 0xFF),
+            .eval_stack = try stack.Stack(value.Value).init(allocator, 0xFF),
+            .call_stack = try stack.Stack(CallFrame).init(allocator, 0xFF),
             .allocator = allocator,
         };
+        try vm.call_stack.push(CallFrame{ .index = 0 });
+        return vm;
     }
 
     pub fn deinit(self: *VM) void {
@@ -38,8 +40,10 @@ pub const VM = struct {
 
     pub fn run(self: *VM) RuntimeError!void {
         while (self.pc < self.bytes.len) {
-            self.nextInstr();
+            try self.nextInstr();
         }
+        const result = try self.eval_stack.pop();
+        std.debug.print("{any}\n", .{result});
     }
 
     fn nextInstr(self: *VM) RuntimeError!void {
@@ -48,6 +52,7 @@ pub const VM = struct {
             .CONSTANT => try self.opConstant(),
             .VAR_SET => try self.opVarSet(),
             .VAR_GET => try self.opVarGet(),
+            .STACK_ALLOC => try self.opStackAlloc(),
         }
     }
 
@@ -57,30 +62,29 @@ pub const VM = struct {
             return RuntimeError.InvalidConstant;
         }
         const constant = self.constants[index];
-        try self.value_stack.push(constant);
+        try self.eval_stack.push(constant);
     }
 
     fn opVarSet(self: *VM) RuntimeError!void {
         const offset = try self.nextByte();
-
-        if (self.call_stack.peek() == null) {
-            return RuntimeError.InvalidCallFrame;
-        }
-
-        const value_ptr = try self.value_stack.peekFrameOffset(self.call_stack.peek().?.offset, offset);
-        const new_value = try self.value_stack.pop();
+        const frame = try self.call_stack.peek();
+        const value_ptr = try self.eval_stack.peekFrameOffset(frame.index, offset);
+        const new_value = try self.eval_stack.pop();
         value_ptr.* = new_value;
     }
 
     fn opVarGet(self: *VM) RuntimeError!void {
         const offset = try self.nextByte();
+        const frame = try self.call_stack.peek();
+        const value_ptr = try self.eval_stack.peekFrameOffset(frame.index, offset);
+        try self.eval_stack.push(value_ptr.*);
+    }
 
-        if (self.call_stack.peek() == null) {
-            return RuntimeError.InvalidCallFrame;
+    fn opStackAlloc(self: *VM) RuntimeError!void {
+        const amount = try self.nextByte();
+        for (0..amount) |_| {
+            try self.eval_stack.push(value.Value{ .data = .uninitialized });
         }
-
-        const value_ptr = try self.value_stack.peekFrameOffset(self.call_stack.peek().?.offset, offset);
-        try self.value_stack.push(value_ptr.*);
     }
 
     fn nextByte(self: *VM) RuntimeError!u8 {

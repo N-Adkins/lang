@@ -2,5 +2,5 @@
     var test: number = 3;
     var other: number = 5;
     test = other;
-    other = 4;
+    test;
 }

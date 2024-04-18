@@ -4,5 +4,6 @@ const std = @import("std");
 pub const Value = struct {
     data: union(enum) {
         number: i64,
+        uninitialized: void, // only to be used by compiler guaranteed memory, like stack memory for initialized vars
     },
 };

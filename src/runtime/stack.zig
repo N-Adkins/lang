@@ -12,9 +12,9 @@ pub fn Stack(comptime T: type) type {
         items: []T,
         head: usize = 0,
 
-        pub fn init(allocator: std.mem.Allocator, size: usize) StackError!Stack {
+        pub fn init(allocator: std.mem.Allocator, size: usize) StackError!Self {
             const items = try allocator.alloc(T, size);
-            return Stack{
+            return Self{
                 .items = items,
             };
         }
@@ -33,6 +33,13 @@ pub fn Stack(comptime T: type) type {
             }
         }
 
+        pub fn peekFrameOffset(self: *Self, frame: usize, offset: usize) StackError!*T {
+            if (frame +% offset > self.head) {
+                return StackError.Overflow;
+            }
+            return &self.items[frame + offset];
+        }
+
         pub fn push(self: *Self, item: T) StackError!void {
             if (self.head >= self.items.len) {
                 return StackError.Overflow;
@@ -42,7 +49,7 @@ pub fn Stack(comptime T: type) type {
         }
 
         pub fn pop(self: *Self) StackError!T {
-            if (self.head > self.head -% 1) {
+            if (self.head < self.head -% 1) {
                 return StackError.Underflow;
             }
             self.head -= 1;
@@ -50,7 +57,7 @@ pub fn Stack(comptime T: type) type {
         }
 
         pub fn peek(self: *Self) StackError!*T {
-            if (self.head > self.head -% 1) {
+            if (self.head < self.head -% 1) {
                 return StackError.Underflow;
             }
             return &self.items[self.head - 1];

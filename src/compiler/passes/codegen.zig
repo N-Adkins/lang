@@ -10,6 +10,7 @@ pub const GenError = error{
 } || std.mem.Allocator.Error;
 
 const FuncFrame = struct {
+    byte_start: usize,
     local_count: u8 = 0,
     map: std.AutoHashMapUnmanaged(*anyopaque, u8) = std.AutoHashMapUnmanaged(*anyopaque, u8){},
 };
@@ -24,13 +25,11 @@ pub const CodeGenPass = struct {
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, root: *ast.AstNode) GenError!CodeGenPass {
-        var pass = CodeGenPass{
+        return CodeGenPass{
             .root = root,
             .err_ctx = err_ctx,
             .allocator = allocator,
         };
-        _ = try pass.pushFrame();
-        return pass;
     }
 
     pub fn deinit(self: *CodeGenPass) void {
@@ -42,7 +41,16 @@ pub const CodeGenPass = struct {
     }
 
     pub fn run(self: *CodeGenPass) GenError!void {
-        try self.genNode(self.root);
+        try self.genFunc(self.root);
+    }
+
+    fn genFunc(self: *CodeGenPass, body: *ast.AstNode) GenError!void {
+        _ = try self.pushFrame();
+        try self.genNode(body);
+        const frame = self.func_stack.first.?.data;
+        const stack_alloc = &[2]u8{ @intFromEnum(byte.Opcode.STACK_ALLOC), frame.local_count };
+        try self.bytecode.insertSlice(self.allocator, frame.byte_start, stack_alloc);
+        self.popFrame();
     }
 
     fn genNode(self: *CodeGenPass, node: *ast.AstNode) GenError!void {
@@ -116,7 +124,9 @@ pub const CodeGenPass = struct {
 
     fn pushFrame(self: *CodeGenPass) GenError!*FuncFrame {
         const main_node = try self.allocator.create(FrameNode);
-        main_node.data = FuncFrame{};
+        main_node.data = FuncFrame{
+            .byte_start = self.bytecode.items.len,
+        };
         self.func_stack.prepend(main_node);
         return &self.func_stack.first.?.data;
     }
