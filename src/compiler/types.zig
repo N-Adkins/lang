@@ -13,6 +13,7 @@ pub const Type = union(enum) {
                 }
                 func.args.deinit(allocator);
                 func.ret.deinit(allocator);
+                allocator.destroy(func.ret);
             },
             else => {},
         }

@@ -57,20 +57,60 @@ pub const Parser = struct {
         }
     }
 
-    fn parseTypeDecl(self: *Parser) Error!types.Type {
-        _ = try self.expectToken(.colon);
-        const new_type = try self.parseType();
-        return new_type;
-    }
-
     fn parseType(self: *Parser) Error!types.Type {
-        const name = try self.expectToken(.identifier);
-        const raw_name = self.lexer.source[name.start..name.end];
-        if (types.builtin_lookup.get(raw_name)) |builtin| {
-            return builtin;
+        if (self.previous == null) {
+            try self.err_ctx.newError(.unexpected_end, "Expected type, found end", .{}, null);
+            return Error.UnexpectedEnd;
         }
-        try self.err_ctx.errorFromToken(.unexpected_end, "Failed to parse type", .{}, name);
-        return Error.UnexpectedToken;
+
+        switch (self.previous.?.tag) {
+            .identifier => {
+                const name = try self.expectToken(.identifier);
+                const raw_name = self.lexer.source[name.start..name.end];
+                if (types.builtin_lookup.get(raw_name)) |builtin| {
+                    return builtin;
+                }
+                try self.err_ctx.errorFromToken(.unexpected_end, "Failed to parse type \"{s}\"", .{raw_name}, name);
+                return Error.UnexpectedToken;
+            },
+            .keyword_fn => {
+                _ = self.nextToken();
+                _ = try self.expectToken(.l_paren);
+
+                var arg_types = std.ArrayListUnmanaged(types.Type){};
+                errdefer {
+                    for (arg_types.items) |*arg| {
+                        arg.deinit(self.allocator);
+                    }
+                    arg_types.deinit(self.allocator);
+                }
+
+                while (self.previous != null and self.previous.?.tag != .r_paren) {
+                    try arg_types.append(self.allocator, try self.parseType());
+                    if (self.previous != null and self.previous.?.tag != .r_paren) {
+                        _ = try self.expectToken(.comma);
+                    }
+                }
+
+                _ = try self.expectToken(.r_paren);
+                _ = try self.expectToken(.right_arrow);
+
+                const ret_type_raw = try self.parseType();
+                const ret_type = try self.allocator.create(types.Type);
+                ret_type.* = ret_type_raw;
+
+                return types.Type{
+                    .function = .{
+                        .args = arg_types,
+                        .ret = ret_type,
+                    },
+                };
+            },
+            else => {
+                try self.err_ctx.errorFromToken(.unexpected_end, "Failed to parse type", .{}, self.previous.?);
+                return Error.UnexpectedToken;
+            },
+        }
     }
 
     fn parseExpression(self: *Parser) Error!*ast.Node {
@@ -174,8 +214,6 @@ pub const Parser = struct {
 
                     if (self.previous != null and self.previous.?.tag == .comma) {
                         _ = self.nextToken();
-                    } else {
-                        break;
                     }
                 }
                 _ = try self.expectToken(.r_paren);
@@ -274,10 +312,26 @@ pub const Parser = struct {
         _ = try self.expectToken(.keyword_var);
 
         const identifier = try self.expectToken(.identifier);
-        var type_decl = try self.parseTypeDecl();
-        errdefer type_decl.deinit(self.allocator);
 
-        _ = try self.expectToken(.equals);
+        const next = try self.expectToken(null);
+
+        var type_decl: ?types.Type = switch (next.tag) {
+            .colon => blk: {
+                const decl = try self.parseType();
+                _ = try self.expectToken(.equals);
+                break :blk decl;
+            },
+            .colon_equals => null,
+            else => {
+                try self.err_ctx.errorFromToken(.unexpected_token, "Expected ':' or ':=', found \"{s}\"", .{self.lexer.source[next.start..next.end]}, next);
+                return Error.UnexpectedToken;
+            },
+        };
+        errdefer {
+            if (type_decl) |*decl| {
+                decl.deinit(self.allocator);
+            }
+        }
 
         const expression = try self.parseExpression();
         errdefer {
@@ -378,18 +432,28 @@ pub const Parser = struct {
     /// Errors if the current token doesn't have the passed tag.
     /// If it does, it runs nextToken and returns the token that matched
     /// the tag.
-    fn expectToken(self: *Parser, tag: lexer.TokenTag) Error!lexer.Token {
-        if (self.previous) |prev| {
-            if (prev.tag == tag) {
+    fn expectToken(self: *Parser, maybe_tag: ?lexer.TokenTag) Error!lexer.Token {
+        if (maybe_tag) |tag| {
+            if (self.previous) |prev| {
+                if (prev.tag == tag) {
+                    _ = self.nextToken();
+                    return prev;
+                } else {
+                    try self.err_ctx.errorFromToken(.unexpected_token, "Expected token of type {s}, found [{s},\"{s}\"]", .{ @tagName(tag), @tagName(prev.tag), self.lexer.source[prev.start..prev.end] }, prev);
+                    return Error.UnexpectedToken;
+                }
+            } else {
+                try self.err_ctx.newError(.unexpected_end, "Expected token of type {s}, found end", .{@tagName(tag)}, null);
+                return Error.UnexpectedEnd;
+            }
+        } else {
+            if (self.previous) |prev| {
                 _ = self.nextToken();
                 return prev;
             } else {
-                try self.err_ctx.errorFromToken(.unexpected_token, "Expected token of type {s}, found [{s},\"{s}\"]", .{ @tagName(tag), @tagName(prev.tag), self.lexer.source[prev.start..prev.end] }, prev);
-                return Error.UnexpectedToken;
+                try self.err_ctx.newError(.unexpected_end, "Expected any token, found end", .{}, null);
+                return Error.UnexpectedEnd;
             }
-        } else {
-            try self.err_ctx.newError(.unexpected_end, "Expected token of type {s}, found end", .{@tagName(tag)}, null);
-            return Error.UnexpectedEnd;
         }
     }
 

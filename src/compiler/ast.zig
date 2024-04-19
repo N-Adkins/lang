@@ -38,7 +38,7 @@ pub const Node = struct {
 
         // Statements
         block: struct { list: std.ArrayListUnmanaged(*Node) },
-        var_decl: struct { name: []u8, decl_type: types.Type, expr: *Node },
+        var_decl: struct { name: []u8, decl_type: ?types.Type, expr: *Node },
         var_assign: struct { name: []u8, expr: *Node },
     },
 
@@ -67,6 +67,9 @@ pub const Node = struct {
             },
             .var_decl => |*var_decl| {
                 var_decl.expr.deinit(allocator);
+                if (var_decl.decl_type) |*decl_type| {
+                    decl_type.deinit(allocator);
+                }
                 allocator.free(var_decl.name);
                 allocator.destroy(var_decl.expr);
             },

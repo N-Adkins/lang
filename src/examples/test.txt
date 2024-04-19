@@ -1,2 +1,2 @@
-var test: number = 3 * (5 - 2);
-var other: number = 20 - 8 * 2;
+var test := 3 * (5 - 2);
+var other := 20 - 8 * 2;

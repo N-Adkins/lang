@@ -12,8 +12,10 @@ pub const TokenTag = enum {
     r_curly,
     comma,
     period,
-    colon,
     semicolon,
+    colon,
+    colon_equals,
+    right_arrow,
     minus,
     minus_minus,
     minus_equals,
@@ -32,12 +34,14 @@ pub const TokenTag = enum {
     greater_than_equals,
     keyword_var,
     keyword_if,
+    keyword_fn,
 };
 
 /// Used when parsing identifiers
 const keyword_lookup = std.ComptimeStringMap(TokenTag, .{
     .{ "var", TokenTag.keyword_var },
     .{ "if", TokenTag.keyword_if },
+    .{ "fn", TokenTag.keyword_fn },
 });
 
 pub const Token = struct {
@@ -174,6 +178,10 @@ pub const Lexer = struct {
                         _ = self.nextChar();
                         tag = .minus_minus;
                     },
+                    '>' => {
+                        _ = self.nextChar();
+                        tag = .right_arrow;
+                    },
                     '=' => {
                         _ = self.nextChar();
                         tag = .minus_equals;
@@ -226,7 +234,15 @@ pub const Lexer = struct {
                     else => tag = .greater_than,
                 }
             },
-            ':' => tag = .colon,
+            ':' => if (self.peekChar()) |c| {
+                switch (c) {
+                    '=' => {
+                        _ = self.nextChar();
+                        tag = .colon_equals;
+                    },
+                    else => tag = .colon,
+                }
+            },
             ';' => tag = .semicolon,
             else => {
                 try self.err_ctx.newError(.unexpected_character, "Unexpected character: '{c}'", .{char}, start);
