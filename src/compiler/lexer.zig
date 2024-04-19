@@ -204,6 +204,11 @@ pub const Lexer = struct {
                         _ = self.nextChar();
                         tag = .slash_equals;
                     },
+                    '/' => {
+                        _ = self.nextChar();
+                        self.ignoreLine();
+                        return;
+                    },
                     else => tag = .slash,
                 }
             },
@@ -251,6 +256,14 @@ pub const Lexer = struct {
         }
         const end = self.index;
         try self.pushToken(Token{ .tag = tag, .start = start, .end = end });
+    }
+
+    fn ignoreLine(self: *Lexer) void {
+        while (self.nextChar()) |c| {
+            if (c == '\n') {
+                break;
+            }
+        }
     }
 
     fn pushToken(self: *Lexer, token: Token) Error!void {
