@@ -44,7 +44,13 @@ pub const ErrorContext = struct {
         }
     }
 
-    pub fn newError(self: *ErrorContext, tag: ErrorTag, comptime message_fmt: []const u8, args: anytype, index: ?usize) std.mem.Allocator.Error!void {
+    pub fn newError(
+        self: *ErrorContext,
+        tag: ErrorTag,
+        comptime message_fmt: []const u8,
+        args: anytype,
+        index: ?usize
+    ) std.mem.Allocator.Error!void {
         const message = std.fmt.allocPrint(self.allocator, message_fmt, args) catch "Allocation Failure";
 
         const err = blk: {
@@ -64,7 +70,13 @@ pub const ErrorContext = struct {
         self.errors.append(node);
     }
 
-    pub fn errorFromToken(self: *ErrorContext, tag: ErrorTag, comptime message: []const u8, args: anytype, token: lexer.Token) std.mem.Allocator.Error!void {
+    pub fn errorFromToken(
+        self: *ErrorContext,
+        tag: ErrorTag,
+        comptime message: []const u8,
+        args: anytype,
+        token: lexer.Token
+    ) std.mem.Allocator.Error!void {
         try self.newError(tag, message, args, token.start);
     }
 
