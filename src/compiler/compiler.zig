@@ -12,10 +12,13 @@ const type_pass = @import("passes/type_check.zig");
 /// Container for the bytecode and constants that are obtained
 /// during the code generation pass
 pub const CompileResult = struct {
-    bytecode: []const u8,
+    bytecode: [][]const u8,
     constants: []const value.Value,
 
     pub fn deinit(self: *CompileResult, allocator: std.mem.Allocator) void {
+        for (self.bytecode) |func| {
+            allocator.free(func);
+        }
         allocator.free(self.bytecode);
         allocator.free(self.constants);
     }
@@ -53,14 +56,17 @@ fn runPasses(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, source: [
     defer symbol_populate_pass.deinit();
     try symbol_populate_pass.run();
 
-    var type_check_pass = type_pass.Pass.init(err_ctx, &parse.root);
+    var type_check_pass = type_pass.Pass.init(allocator, err_ctx, &parse.root);
     try type_check_pass.run();
 
     var codegen_pass = try code_pass.Pass.init(allocator, err_ctx, &parse.root);
     defer codegen_pass.deinit();
     try codegen_pass.run();
 
-    const bytecode = try allocator.dupe(u8, codegen_pass.bytecode.items);
+    const bytecode = try allocator.alloc([]const u8, codegen_pass.bytecode.items.len);
+    for (0..codegen_pass.bytecode.items.len) |i| {
+        bytecode[i] = try allocator.dupe(u8, codegen_pass.bytecode.items[i].code.items);
+    }
     const constants = try allocator.dupe(value.Value, codegen_pass.constants.items);
 
     return CompileResult{ .bytecode = bytecode, .constants = constants };

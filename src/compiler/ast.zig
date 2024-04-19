@@ -3,11 +3,25 @@
 const std = @import("std");
 const types = @import("types.zig");
 
-pub const Operator = enum(u8) {
+pub const Operator = union(enum) {
     add,
     sub,
     mul,
     div,
+    call: struct { args: std.ArrayListUnmanaged(*Node) },
+
+    pub fn deinit(self: *Operator, allocator: std.mem.Allocator) void {
+        switch (self.*) {
+            .call => |*call| {
+                for (call.args.items) |arg| {
+                    arg.deinit(allocator);
+                    allocator.destroy(arg);
+                }
+                call.args.deinit(allocator);
+            },
+            else => {},
+        }
+    }
 };
 
 /// Abstract Syntax Tree Node, contains both
@@ -32,11 +46,13 @@ pub const Node = struct {
         switch (self.data) {
             .integer_constant => {},
             .var_get => |*var_get| allocator.free(var_get.name),
-            .unary_op => |unary| {
+            .unary_op => |*unary| {
+                unary.op.deinit(allocator);
                 unary.expr.deinit(allocator);
                 allocator.destroy(unary.expr);
             },
-            .binary_op => |binary| {
+            .binary_op => |*binary| {
+                binary.op.deinit(allocator);
                 binary.lhs.deinit(allocator);
                 binary.rhs.deinit(allocator);
                 allocator.destroy(binary.lhs);

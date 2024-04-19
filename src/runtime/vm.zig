@@ -19,14 +19,15 @@ const CallFrame = struct {
 
 /// Virtual machine, executes bytecode and maintains all runtime stacks
 pub const VM = struct {
-    bytes: []const u8,
+    current_func: usize = 0,
+    bytes: [][]const u8,
     constants: []const value.Value,
     eval_stack: stack.Stack(value.Value),
     call_stack: stack.Stack(CallFrame),
     pc: usize = 0,
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator, bytes: []const u8, constants: []const value.Value) Error!VM {
+    pub fn init(allocator: std.mem.Allocator, bytes: [][]const u8, constants: []const value.Value) Error!VM {
         var vm = VM{
             .bytes = bytes,
             .constants = constants,
@@ -45,11 +46,13 @@ pub const VM = struct {
 
     /// Runs VM
     pub fn run(self: *VM) Error!void {
-        while (self.pc < self.bytes.len) {
+        while (self.pc < self.bytes[self.current_func].len) {
             try self.nextInstr();
         }
-        const result = try self.eval_stack.pop();
-        std.debug.print("{any}\n", .{result});
+        while (self.eval_stack.head > 0) {
+            const item = try self.eval_stack.pop();
+            std.debug.print("{any}\n", .{item});
+        }
     }
 
     /// Executes the next instruction
@@ -64,6 +67,8 @@ pub const VM = struct {
             .SUB => try self.opSub(),
             .MUL => try self.opMul(),
             .DIV => try self.opDiv(),
+            .CALL => try self.opCall(),
+            .RETURN => try self.opReturn(),
         }
     }
 
@@ -138,12 +143,22 @@ pub const VM = struct {
         });
     }
 
+    fn opCall(self: *VM) Error!void {
+        _ = self;
+        @panic("Todo");
+    }
+
+    fn opReturn(self: *VM) Error!void {
+        _ = self;
+        @panic("Todo");
+    }
+
     /// Fetches the next byte and errors if there isn't one
     fn nextByte(self: *VM) Error!u8 {
-        if (self.pc >= self.bytes.len) {
+        if (self.pc >= self.bytes[self.current_func].len) {
             return Error.MalformedInstruction;
         }
-        const ret = self.bytes[self.pc];
+        const ret = self.bytes[self.current_func][self.pc];
         self.pc += 1;
         return ret;
     }

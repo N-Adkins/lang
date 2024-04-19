@@ -6,5 +6,6 @@ const std = @import("std");
 pub const Value = struct {
     data: union(enum) {
         number: i64,
+        func: usize, // func table index
     },
 };

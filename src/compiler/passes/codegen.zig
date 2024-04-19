@@ -14,16 +14,26 @@ pub const Error = error{
 /// Used in function stack to figure out how many local variables are in each stack frame.
 /// Later on this becomes a STACK_ALLOC instruction to reserve local variable space.
 const FuncFrame = struct {
+    func: usize,
     byte_start: usize,
     local_count: u8 = 0,
     map: std.AutoHashMapUnmanaged(*anyopaque, u8) = std.AutoHashMapUnmanaged(*anyopaque, u8){},
 };
 
+const ByteFunc = struct {
+    code: std.ArrayListUnmanaged(u8) = std.ArrayListUnmanaged(u8){},
+
+    pub fn deinit(self: *ByteFunc, allocator: std.mem.Allocator) void {
+        self.code.deinit(allocator);
+    }
+};
+
 pub const Pass = struct {
     const FrameNode = std.DoublyLinkedList(FuncFrame).Node;
     func_stack: std.DoublyLinkedList(FuncFrame) = std.DoublyLinkedList(FuncFrame){},
-    bytecode: std.ArrayListUnmanaged(u8) = std.ArrayListUnmanaged(u8){},
+    bytecode: std.ArrayListUnmanaged(ByteFunc) = std.ArrayListUnmanaged(ByteFunc){},
     constants: std.ArrayListUnmanaged(value.Value) = std.ArrayListUnmanaged(value.Value){},
+    func_count: usize = 0,
     root: *ast.Node,
     err_ctx: *err.ErrorContext,
     allocator: std.mem.Allocator,
@@ -40,6 +50,9 @@ pub const Pass = struct {
         while (self.func_stack.first) |_| {
             self.popFrame();
         }
+        for (self.bytecode.items) |*func| {
+            func.deinit(self.allocator);
+        }
         self.bytecode.deinit(self.allocator);
         self.constants.deinit(self.allocator);
     }
@@ -54,7 +67,7 @@ pub const Pass = struct {
         try self.genNode(body);
         const frame = self.func_stack.first.?.data;
         const stack_alloc = &[2]u8{ @intFromEnum(byte.Opcode.STACK_ALLOC), frame.local_count };
-        try self.bytecode.insertSlice(self.allocator, frame.byte_start, stack_alloc);
+        try self.bytecode.items[frame.func].code.insertSlice(self.allocator, frame.byte_start, stack_alloc);
         self.popFrame();
     }
 
@@ -75,12 +88,24 @@ pub const Pass = struct {
                     .sub => .SUB,
                     .mul => .MUL,
                     .div => .DIV,
+                    else => unreachable,
                 };
                 try self.genNode(binary.lhs);
                 try self.genNode(binary.rhs);
                 try self.pushOp(op);
             },
-            .unary_op => |_| {},
+            .unary_op => |unary| {
+                switch (unary.op) {
+                    .call => |call| {
+                        for (call.args.items) |expr| {
+                            try self.genNode(expr);
+                        }
+                        try self.pushOp(.CALL);
+                        try self.pushByte(@truncate(call.args.items.len));
+                    },
+                    else => unreachable,
+                }
+            },
             .block => |block| {
                 for (block.list.items) |statement| {
                     try self.genNode(statement);
@@ -104,12 +129,14 @@ pub const Pass = struct {
 
     /// Pushes a byte into the bytecode
     fn pushByte(self: *Pass, item: u8) Error!void {
-        try self.bytecode.append(self.allocator, item);
+        const func = self.func_stack.first.?.data.func;
+        try self.bytecode.items[func].code.append(self.allocator, item);
     }
 
     /// Pushes an opcode into the bytecode as a byte
     fn pushOp(self: *Pass, op: byte.Opcode) Error!void {
-        try self.bytecode.append(self.allocator, @intFromEnum(op));
+        const func = self.func_stack.first.?.data.func;
+        try self.bytecode.items[func].code.append(self.allocator, @intFromEnum(op));
     }
 
     /// Pushes a constant onto the constant table
@@ -149,8 +176,11 @@ pub const Pass = struct {
     fn pushFrame(self: *Pass) Error!*FuncFrame {
         const main_node = try self.allocator.create(FrameNode);
         main_node.data = FuncFrame{
+            .func = self.func_count,
             .byte_start = self.bytecode.items.len,
         };
+        try self.bytecode.append(self.allocator, ByteFunc{});
+        self.func_count += 1;
         self.func_stack.prepend(main_node);
         return &self.func_stack.first.?.data;
     }

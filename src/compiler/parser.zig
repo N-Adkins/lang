@@ -47,7 +47,7 @@ pub const Parser = struct {
     pub fn parse(self: *Parser) Error!void {
         _ = self.nextToken();
         _ = self.nextToken();
-        while (self.lexer.queue.len > 0) {
+        while (self.previous != null) {
             const statement = try self.parseStatement();
             errdefer {
                 statement.deinit(self.allocator);
@@ -97,30 +97,45 @@ pub const Parser = struct {
                 .minus => ast.Operator.sub,
                 .star => ast.Operator.mul,
                 .slash => ast.Operator.div,
+                .l_paren => ast.Operator{ .call = undefined },
                 else => break,
             };
 
-            const precedence = infixPrecedence(op).?;
-            if (precedence.lhs < min_precedence) {
-                break;
+            if (postfixPrecedence(op)) |precedence| {
+                if (precedence.lhs < min_precedence) {
+                    break;
+                }
+                _ = self.nextToken();
+                const node = try self.parsePostfix(op, lhs);
+                lhs = node;
+                continue;
             }
 
-            _ = self.nextToken();
-            const rhs = try self.parsePrecedenceExpression(precedence.rhs);
+            if (infixPrecedence(op)) |precedence| {
+                if (precedence.lhs < min_precedence) {
+                    break;
+                }
+                _ = self.nextToken();
+                const rhs = try self.parsePrecedenceExpression(precedence.rhs);
+                errdefer {
+                    rhs.deinit(self.allocator);
+                    self.allocator.destroy(rhs);
+                }
 
-            const node = try self.allocator.create(ast.Node);
-            node.* = .{
-                .index = index,
-                .data = .{
-                    .binary_op = .{
-                        .op = op,
-                        .lhs = lhs,
-                        .rhs = rhs,
+                const node = try self.allocator.create(ast.Node);
+                node.* = .{
+                    .index = index,
+                    .data = .{
+                        .binary_op = .{
+                            .op = op,
+                            .lhs = lhs,
+                            .rhs = rhs,
+                        },
                     },
-                },
-            };
-
-            lhs = node;
+                };
+                lhs = node;
+                continue;
+            }
         }
 
         return lhs;
@@ -137,6 +152,45 @@ pub const Parser = struct {
             },
         };
         return expression;
+    }
+
+    fn parsePostfix(self: *Parser, op: ast.Operator, expr: *ast.Node) Error!*ast.Node {
+        const node = try self.allocator.create(ast.Node);
+        errdefer self.allocator.destroy(node);
+        node.index = expr.index;
+        switch (op) {
+            .call => |_| {
+                var args = std.ArrayListUnmanaged(*ast.Node){};
+                errdefer args.deinit(self.allocator);
+
+                while (self.previous != null and self.previous.?.tag != .r_paren) {
+                    const arg = try self.parseExpression();
+                    errdefer {
+                        arg.deinit(self.allocator);
+                        self.allocator.destroy(arg);
+                    }
+
+                    try args.append(self.allocator, arg);
+
+                    if (self.previous != null and self.previous.?.tag == .comma) {
+                        _ = self.nextToken();
+                    } else {
+                        break;
+                    }
+                }
+                _ = try self.expectToken(.r_paren);
+                node.data = .{ .unary_op = .{
+                    .op = .{
+                        .call = .{
+                            .args = args,
+                        },
+                    },
+                    .expr = expr,
+                } };
+            },
+            else => unreachable,
+        }
+        return node;
     }
 
     fn parseParen(self: *Parser) Error!*ast.Node {
@@ -351,6 +405,14 @@ pub const Parser = struct {
         return switch (op) {
             .add, .sub => .{ .lhs = 1, .rhs = 2 },
             .mul, .div => .{ .lhs = 3, .rhs = 4 },
+            else => null,
+        };
+    }
+
+    fn postfixPrecedence(op: ast.Operator) ?Precedence {
+        return switch (op) {
+            .call => .{ .lhs = 7, .rhs = 0 },
+            else => null,
         };
     }
 };
