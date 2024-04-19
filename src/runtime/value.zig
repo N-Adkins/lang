@@ -18,18 +18,15 @@ pub const Object = struct {
         };
 
         const obj = try init_allocator.create(Object);
-        obj.* = .{
-            .ptr = init_ptr,
-            .vtable = .{
-                .deinit = vtable_gen.deinit,
-            }
-        };
+        obj.* = .{ .ptr = init_ptr, .vtable = .{
+            .deinit = vtable_gen.deinit,
+        } };
 
         return obj;
     }
 
     pub fn deinit(self: *Object, allocator: std.mem.Allocator) void {
-        self.vtable.deinit(self.ptr, allocator); 
+        self.vtable.deinit(self.ptr, allocator);
         allocator.destroy(self);
     }
 };
