@@ -1,26 +1,41 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
 
-pub const GCAllocator = struct {
-    inner: Allocator,
+/// Object Interface
+pub const Object = struct {
+    marked: bool = false,
+    ptr: *anyopaque,
+    vtable: struct {
+        deinit: *const fn (ptr: *anyopaque, allocator: std.mem.Allocator) void,
+    },
 
-    pub fn init(inner: Allocator) GCAllocator {
-        return GCAllocator{
-            .inner = inner,
+    pub fn init(init_ptr: anytype, init_allocator: std.mem.Allocator) std.mem.Allocator.Error!*Object {
+        const vtable_gen = struct {
+            fn deinit(ptr: *anyopaque, allocator: std.mem.Allocator) void {
+                const self: @TypeOf(ptr) = @ptrCast(@alignCast(ptr));
+                return self.deinit(allocator);
+            }
         };
+
+        const obj = try init_allocator.create(Object);
+        obj.* = .{ .ptr = init_ptr, .vtable = .{
+            .deinit = vtable_gen.deinit,
+        } };
+
+        return obj;
     }
 
-    pub fn allocator(self: *GCAllocator) Allocator {
-        return Allocator{
-            .ptr = self,
-            .vtable = .{
-                .alloc = alloc,
-            },
-        };
+    pub fn deinit(self: *Object, allocator: std.mem.Allocator) void {
+        self.vtable.deinit(self.ptr, allocator);
+        allocator.destroy(self);
     }
+};
 
-    fn alloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
-        const self: *GCAllocator = @ptrCast(@alignCast(ctx));
-        return self.allocInner(len, ptr_align, ret_addr) orelse null;
+pub const GC = struct {
+    allocator: std.mem.Allocator,
+
+    pub fn init(allocator: std.mem.Allocator) GC {
+        return GC{
+            .allocator = allocator,
+        };
     }
 };

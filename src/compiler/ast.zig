@@ -24,6 +24,11 @@ pub const Operator = union(enum) {
     }
 };
 
+pub const FunctionArg = struct {
+    name: []const u8,
+    arg_type: types.Type,
+};
+
 /// Abstract Syntax Tree Node, contains both
 /// statements and expressions
 pub const Node = struct {
@@ -35,6 +40,7 @@ pub const Node = struct {
         var_get: struct { name: []u8 },
         unary_op: struct { op: Operator, expr: *Node },
         binary_op: struct { op: Operator, lhs: *Node, rhs: *Node },
+        function_decl: struct { args: std.ArrayListUnmanaged(FunctionArg), ret_type: types.Type, body: *Node },
 
         // Statements
         block: struct { list: std.ArrayListUnmanaged(*Node) },
@@ -57,6 +63,16 @@ pub const Node = struct {
                 binary.rhs.deinit(allocator);
                 allocator.destroy(binary.lhs);
                 allocator.destroy(binary.rhs);
+            },
+            .function_decl => |*func_decl| {
+                for (func_decl.args.items) |*arg| {
+                    allocator.free(arg.name);
+                    arg.arg_type.deinit(allocator);
+                }
+                func_decl.args.deinit(allocator);
+                func_decl.ret_type.deinit(allocator);
+                func_decl.body.deinit(allocator);
+                allocator.destroy(func_decl.body);
             },
             .block => |*block| {
                 for (block.list.items) |node| {
