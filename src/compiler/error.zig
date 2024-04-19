@@ -123,7 +123,7 @@ pub const ErrorContext = struct {
             if (byte == '\n' or i == self.source.len - 1) {
                 if (index >= start and index <= i) {
                     const end = if (i == self.source.len - 1) i + 1 else i;
-                    return .{ .line = self.source[start..end], .num = line_num };
+                    return .{ .line = self.source[start .. end - 1], .num = line_num };
                 }
                 line_num += 1;
                 start = i + 1;
