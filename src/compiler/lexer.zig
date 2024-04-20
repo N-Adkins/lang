@@ -35,6 +35,7 @@ pub const TokenTag = enum {
     keyword_var,
     keyword_if,
     keyword_fn,
+    keyword_return,
 };
 
 /// Used when parsing identifiers
@@ -42,6 +43,7 @@ const keyword_lookup = std.ComptimeStringMap(TokenTag, .{
     .{ "var", TokenTag.keyword_var },
     .{ "if", TokenTag.keyword_if },
     .{ "fn", TokenTag.keyword_fn },
+    .{ "return", TokenTag.keyword_return },
 });
 
 pub const Token = struct {

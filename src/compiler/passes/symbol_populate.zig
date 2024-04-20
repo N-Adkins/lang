@@ -204,6 +204,11 @@ pub const Pass = struct {
                 try self.populateNode(var_decl.expr);
             },
             .var_assign => |*var_assign| try self.populateNode(var_assign.expr),
+            .return_stmt => |*ret| {
+                if (ret.expr) |expr| {
+                    try self.populateNode(expr);
+                }
+            },
         }
     }
 };

@@ -1,5 +1,6 @@
 var test := 5;
-var test_func := fn (arg: number) -> void {
-    arg * arg * 2;
+var test_func := fn (arg: number) -> number {
+    return arg * arg * 2;
 };
 test_func(test);
+return;

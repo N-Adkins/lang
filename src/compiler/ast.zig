@@ -50,6 +50,7 @@ pub const Node = struct {
         block: Block,
         var_decl: VarDecl,
         var_assign: VarAssign,
+        return_stmt: Return,
     },
 
     const IntegerConstant = struct {
@@ -144,6 +145,17 @@ pub const Node = struct {
             self.expr.deinit(allocator);
             allocator.destroy(self.expr);
             allocator.free(self.name);
+        }
+    };
+
+    const Return = struct {
+        expr: ?*Node,
+
+        pub fn deinit(self: *Return, allocator: std.mem.Allocator) void {
+            if (self.expr) |expr| {
+                expr.deinit(allocator);
+                allocator.destroy(expr);
+            }
         }
     };
 

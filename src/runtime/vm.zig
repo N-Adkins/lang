@@ -160,15 +160,21 @@ pub const VM = struct {
     }
 
     fn opReturn(self: *VM) Error!void {
+        const is_return = (try self.nextByte()) != 0;
         const call_frame = try self.call_stack.pop();
         if (call_frame.root) {
             return;
         }
         self.current_func = call_frame.func;
         self.pc = call_frame.index;
-        const ret = try self.eval_stack.pop();
-        try self.eval_stack.popFrame(call_frame.stack_offset);
-        try self.eval_stack.push(ret);
+
+        if (is_return) {
+            const ret = try self.eval_stack.pop();
+            try self.eval_stack.popFrame(call_frame.stack_offset);
+            try self.eval_stack.push(ret);
+        } else {
+            try self.eval_stack.popFrame(call_frame.stack_offset);
+        }
     }
 
     /// Fetches the next byte and errors if there isn't one

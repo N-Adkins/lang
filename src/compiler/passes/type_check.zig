@@ -1,5 +1,8 @@
 //! Type-checking pass, assumes symbols have been populated and ensures
 //! that all types are correct.
+//! TODO:
+//! Implement checks to ensure that all control paths
+//! have a return statement
 
 const std = @import("std");
 const ast = @import("../ast.zig");
@@ -10,17 +13,70 @@ pub const Error = error{
     MismatchedTypes,
 } || std.mem.Allocator.Error;
 
+const Stack = struct {
+    const Node = struct {
+        next: ?*Node = null,
+        data: types.Type,
+    };
+    head: ?*Node = null,
+
+    pub fn deinit(self: *Stack, allocator: std.mem.Allocator) void {
+        while (self.pop(allocator)) |type_decl| {
+            var deinit_decl = type_decl;
+            deinit_decl.deinit(allocator);
+        }
+    }
+
+    pub fn push(self: *Stack, allocator: std.mem.Allocator, type_decl: types.Type) Error!*types.Type {
+        const node = try allocator.create(Node);
+        node.data = type_decl;
+        node.next = self.head;
+        self.head = node;
+        return &node.data;
+    }
+
+    pub fn pop(self: *Stack, allocator: std.mem.Allocator) ?types.Type {
+        if (self.head) |head| {
+            const ret = head.data;
+            self.head = head.next;
+            allocator.destroy(head);
+            return ret;
+        } else {
+            return null;
+        }
+    }
+
+    pub fn peek(self: *Stack) ?*types.Type {
+        if (self.head) |head| {
+            return &head.data;
+        }
+        return null;
+    }
+};
+
 pub const Pass = struct {
     root: *ast.Node,
+    func_stack: Stack = Stack{},
     err_ctx: *err.ErrorContext,
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, root: *ast.Node) Pass {
-        return Pass{
+    pub fn init(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, root: *ast.Node) Error!Pass {
+        var pass = Pass{
             .root = root,
             .err_ctx = err_ctx,
             .allocator = allocator,
         };
+
+        // Push main function signature
+        const void_type = try allocator.create(types.Type);
+        void_type.* = .void;
+        _ = try pass.func_stack.push(allocator, types.Type{ .function = .{ .ret = void_type } });
+
+        return pass;
+    }
+
+    pub fn deinit(self: *Pass) void {
+        self.func_stack.deinit(self.allocator);
     }
 
     pub fn run(self: *Pass) Error!void {
@@ -31,14 +87,14 @@ pub const Pass = struct {
         switch (node.data) {
             .integer_constant => return .number,
             .var_get => |_| return try node.symbol_decl.?.decl_type.?.dupe(self.allocator),
-            .block => |block| {
+            .block => |*block| {
                 for (block.list.items) |statement| {
                     var stmt_type = try self.typeCheck(statement);
                     stmt_type.deinit(self.allocator);
                 }
                 return .void;
             },
-            .binary_op => |binary| {
+            .binary_op => |*binary| {
                 const lhs_type = try self.typeCheck(binary.lhs);
                 var rhs_type = try self.typeCheck(binary.rhs);
                 defer rhs_type.deinit(self.allocator);
@@ -50,9 +106,6 @@ pub const Pass = struct {
             },
             .unary_op => |_| return try self.checkUnary(node),
             .function_decl => |*func_decl| {
-                var body_type = try self.typeCheck(func_decl.body);
-                defer body_type.deinit(self.allocator);
-
                 var arg_types = std.ArrayListUnmanaged(types.Type){};
                 errdefer {
                     for (arg_types.items) |*arg_type| {
@@ -65,15 +118,32 @@ pub const Pass = struct {
                     try arg_types.append(self.allocator, try arg.decl_type.?.dupe(self.allocator));
                 }
 
-                const ret = try self.allocator.create(types.Type);
+                var ret = try self.allocator.create(types.Type);
                 ret.* = try func_decl.ret_type.dupe(self.allocator);
+                errdefer {
+                    ret.deinit(self.allocator);
+                    self.allocator.destroy(ret);
+                }
 
-                return types.Type{
+                var func_type = types.Type{
                     .function = .{
                         .args = arg_types,
                         .ret = ret,
                     },
                 };
+                errdefer func_type.deinit(self.allocator);
+
+                var dupe = try func_type.dupe(self.allocator);
+                defer dupe.deinit(self.allocator);
+
+                _ = try self.func_stack.push(self.allocator, dupe);
+
+                var body_type = try self.typeCheck(func_decl.body);
+                defer body_type.deinit(self.allocator);
+
+                _ = self.func_stack.pop(self.allocator);
+
+                return func_type;
             },
             .var_decl => |*var_decl| {
                 if (var_decl.symbol.decl_type) |*decl_type| {
@@ -89,12 +159,22 @@ pub const Pass = struct {
                 }
                 return .void;
             },
-            .var_assign => |var_assign| {
+            .var_assign => |*var_assign| {
                 var expr_type = try self.typeCheck(var_assign.expr);
                 defer expr_type.deinit(self.allocator);
                 const ident_type = &node.symbol_decl.?.decl_type.?;
                 if (!expr_type.equal(ident_type)) {
                     try self.err_ctx.newError(.mismatched_types, "Expected type {any} in variable declaration expression, found type {any}", .{ ident_type, expr_type }, var_assign.expr.index);
+                    return Error.MismatchedTypes;
+                }
+                return .void;
+            },
+            .return_stmt => |*ret| {
+                var ret_type: types.Type = if (ret.expr) |expr| try self.typeCheck(expr) else .void;
+                defer ret_type.deinit(self.allocator);
+                const func_ret_type = self.func_stack.head.?.data.function.ret;
+                if (!ret_type.equal(func_ret_type)) {
+                    try self.err_ctx.newError(.mismatched_types, "Expected type {any} in function return statement, found type {any}", .{ func_ret_type, ret_type }, node.index);
                     return Error.MismatchedTypes;
                 }
                 return .void;

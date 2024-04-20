@@ -3,7 +3,7 @@ const std = @import("std");
 pub const Type = union(enum) {
     void,
     number,
-    function: struct { args: std.ArrayListUnmanaged(Type), ret: *Type },
+    function: struct { args: std.ArrayListUnmanaged(Type) = std.ArrayListUnmanaged(Type){}, ret: *Type },
 
     pub fn deinit(self: *Type, allocator: std.mem.Allocator) void {
         switch (self.*) {

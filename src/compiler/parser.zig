@@ -346,6 +346,7 @@ pub const Parser = struct {
                 needs_semicolon = false;
                 break :blk try self.parseBlock();
             },
+            .keyword_return => try self.parseReturn(),
             else => try self.parseExpression(),
         };
         errdefer {
@@ -480,6 +481,35 @@ pub const Parser = struct {
         };
 
         return block;
+    }
+
+    fn parseReturn(self: *Parser) Error!*ast.Node {
+        const start = try self.expectToken(.keyword_return);
+        if (self.previous) |prev| {
+            const expr: ?*ast.Node = switch (prev.tag) {
+                .semicolon => null,
+                else => try self.parseExpression(),
+            };
+            errdefer {
+                if (expr) |expr_ptr| {
+                    expr_ptr.deinit(self.allocator);
+                    self.allocator.destroy(expr_ptr);
+                }
+            }
+            const node = try self.allocator.create(ast.Node);
+            node.* = .{
+                .index = start.start,
+                .data = .{
+                    .return_stmt = .{
+                        .expr = expr,
+                    },
+                },
+            };
+            return node;
+        } else {
+            try self.err_ctx.errorFromToken(.unexpected_token, "Expected expression or ';' after return keyword, found end", .{}, start);
+            return Error.UnexpectedToken;
+        }
     }
 
     /// Errors if the current token doesn't have the passed tag.
