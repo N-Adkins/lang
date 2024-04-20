@@ -124,7 +124,17 @@ pub const Pass = struct {
                 try self.populateNode(binary.lhs);
                 try self.populateNode(binary.rhs);
             },
-            .unary_op => |*unary| try self.populateNode(unary.expr),
+            .unary_op => |*unary| {
+                try self.populateNode(unary.expr);
+                switch (unary.op) {
+                    .call => |call| {
+                        for (call.args.items) |arg| {
+                            try self.populateNode(arg);
+                        }
+                    },
+                    else => unreachable,
+                }
+            },
             .function_decl => |*func_decl| {
                 const frame = self.stack.getFrame();
                 for (func_decl.args.items) |*arg| {

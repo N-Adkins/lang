@@ -30,7 +30,7 @@ pub const Pass = struct {
     fn typeCheck(self: *Pass, node: *ast.Node) Error!types.Type {
         switch (node.data) {
             .integer_constant => return .number,
-            .var_get => |_| return node.symbol_decl.?.decl_type.?,
+            .var_get => |_| return try node.symbol_decl.?.decl_type.?.dupe(self.allocator),
             .block => |block| {
                 for (block.list.items) |statement| {
                     var stmt_type = try self.typeCheck(statement);
@@ -49,7 +49,32 @@ pub const Pass = struct {
                 return lhs_type;
             },
             .unary_op => |_| return try self.checkUnary(node),
-            .function_decl => |*func_decl| return try self.typeCheck(func_decl.body),
+            .function_decl => |*func_decl| {
+                var body_type = try self.typeCheck(func_decl.body);
+                defer body_type.deinit(self.allocator);
+
+                var arg_types = std.ArrayListUnmanaged(types.Type){};
+                errdefer {
+                    for (arg_types.items) |*arg_type| {
+                        arg_type.deinit(self.allocator);
+                    }
+                    arg_types.deinit(self.allocator);
+                }
+
+                for (func_decl.args.items) |arg| {
+                    try arg_types.append(self.allocator, try arg.decl_type.?.dupe(self.allocator));
+                }
+
+                const ret = try self.allocator.create(types.Type);
+                ret.* = try func_decl.ret_type.dupe(self.allocator);
+
+                return types.Type{
+                    .function = .{
+                        .args = arg_types,
+                        .ret = ret,
+                    },
+                };
+            },
             .var_decl => |*var_decl| {
                 if (var_decl.symbol.decl_type) |*decl_type| {
                     var expr_type = try self.typeCheck(var_decl.expr);
@@ -67,10 +92,7 @@ pub const Pass = struct {
             .var_assign => |var_assign| {
                 var expr_type = try self.typeCheck(var_assign.expr);
                 defer expr_type.deinit(self.allocator);
-
-                var ident_type = &node.symbol_decl.?.decl_type.?;
-                defer ident_type.deinit(self.allocator);
-
+                const ident_type = &node.symbol_decl.?.decl_type.?;
                 if (!expr_type.equal(ident_type)) {
                     try self.err_ctx.newError(.mismatched_types, "Expected type {any} in variable declaration expression, found type {any}", .{ ident_type, expr_type }, var_assign.expr.index);
                     return Error.MismatchedTypes;
@@ -83,15 +105,24 @@ pub const Pass = struct {
     /// Made this its own function because it's long
     pub fn checkUnary(self: *Pass, node: *ast.Node) Error!types.Type {
         const unary = node.data.unary_op;
+
         var expr_type = try self.typeCheck(unary.expr);
         defer expr_type.deinit(self.allocator);
+
         switch (unary.op) {
             .call => |call| {
                 var arg_types = std.ArrayListUnmanaged(types.Type){};
-                defer arg_types.deinit(self.allocator);
+                defer {
+                    for (arg_types.items) |*arg_type| {
+                        arg_type.deinit(self.allocator);
+                    }
+                    arg_types.deinit(self.allocator);
+                }
+
                 for (call.args.items) |expr| {
                     try arg_types.append(self.allocator, try self.typeCheck(expr));
                 }
+
                 switch (expr_type) {
                     .function => |func| {
                         if (func.args.items.len != arg_types.items.len) {

@@ -32,7 +32,7 @@ pub fn Stack(comptime T: type) type {
         }
 
         pub fn popFrame(self: *Self, frame: usize) Error!void {
-            while (self.items.len > frame) {
+            while (self.head > frame) {
                 _ = try self.pop();
             }
         }

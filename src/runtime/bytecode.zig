@@ -11,8 +11,8 @@ pub const Opcode = enum(u8) {
     SUB, // pops 2 values off of stack, pushes result after subtracting them
     MUL, // pops 2 values off of stack, pushes result after multiplying them
     DIV, // pops 2 values off of stack, pushes result after dividing them
-    CALL, // u8 argument count
-    RETURN, // u8 1 if return value, 0 if none
+    CALL, // u8 arg count
+    RETURN,
 };
 
 pub fn dumpBytecode(funcs: [][]const u8) void {
@@ -58,8 +58,7 @@ pub fn dumpBytecode(funcs: [][]const u8) void {
                     i += 1;
                 },
                 .RETURN => {
-                    std.debug.print("0x{X:0>2}\n", .{bytes[i]});
-                    i += 1;
+                    std.debug.print("\n", .{});
                 },
             }
         }

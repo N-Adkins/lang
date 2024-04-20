@@ -69,6 +69,16 @@ pub const Node = struct {
         expr: *Node,
 
         pub fn deinit(self: *UnaryOp, allocator: std.mem.Allocator) void {
+            switch (self.op) {
+                .call => |*call| {
+                    for (call.args.items) |arg| {
+                        arg.deinit(allocator);
+                        allocator.destroy(arg);
+                    }
+                    call.args.deinit(allocator);
+                },
+                else => unreachable,
+            }
             self.expr.deinit(allocator);
             allocator.destroy(self.expr);
         }

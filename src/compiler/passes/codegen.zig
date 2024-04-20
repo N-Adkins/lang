@@ -57,13 +57,22 @@ pub const Pass = struct {
     }
 
     pub fn run(self: *Pass) Error!void {
-        _ = try self.genFunc(self.root);
+        _ = try self.genFunc(self.root, null);
     }
 
     /// Wrapper over genNode but with handling local variable allocation
-    fn genFunc(self: *Pass, body: *ast.Node) Error!usize {
+    fn genFunc(self: *Pass, body: *ast.Node, call_func: ?*ast.Node) Error!usize {
         _ = try self.pushFrame();
+
+        if (call_func) |func| {
+            const decl = func.data.function_decl;
+            for (decl.args.items) |*arg| {
+                _ = try self.pushLocal(arg);
+            }
+        }
+
         try self.genNode(body);
+        try self.pushOp(.RETURN);
         const frame = self.func_stack.first.?.data;
         const stack_alloc = &[2]u8{ @intFromEnum(byte.Opcode.STACK_ALLOC), frame.local_count };
         try self.bytecode.items[frame.func].code.insertSlice(self.allocator, 0, stack_alloc);
@@ -100,6 +109,7 @@ pub const Pass = struct {
                         for (call.args.items) |expr| {
                             try self.genNode(expr);
                         }
+                        try self.genNode(unary.expr);
                         try self.pushOp(.CALL);
                         try self.pushByte(@truncate(call.args.items.len));
                     },
@@ -107,7 +117,7 @@ pub const Pass = struct {
                 }
             },
             .function_decl => |*func_decl| {
-                const func = try self.genFunc(func_decl.body);
+                const func = try self.genFunc(func_decl.body, node);
                 try self.pushConstant(value.Value{
                     .data = .{
                         .func = func,
