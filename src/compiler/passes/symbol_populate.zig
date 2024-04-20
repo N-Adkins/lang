@@ -119,7 +119,7 @@ const Stack = struct {
 };
 
 pub const Pass = struct {
-    stack_stack: Stack, // stack of stacks lol 
+    stack_stack: Stack, // stack of stacks lol
     err_ctx: *err.ErrorContext,
     allocator: std.mem.Allocator,
     root: *ast.Node,
@@ -186,7 +186,7 @@ pub const Pass = struct {
                 }
             },
             .function_decl => |*func_decl| {
-                var stack = try self.stack_stack.push(self.allocator, SymbolStack{ .allocator = self.allocator }); 
+                var stack = try self.stack_stack.push(self.allocator, SymbolStack{ .allocator = self.allocator });
                 for (func_decl.args.items) |*arg| {
                     try stack.push(arg);
                 }
