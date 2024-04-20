@@ -63,6 +63,25 @@ pub const Type = union(enum) {
             else => return true,
         }
     }
+
+    pub fn format(self: Type, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
+        _ = fmt;
+        _ = options;
+        switch (self) {
+            .void => try writer.writeAll("void"),
+            .number => try writer.writeAll("number"),
+            .function => |func| {
+                try writer.writeAll("fn (");
+                for (0..func.args.items.len) |i| {
+                    try writer.print("{any}", .{func.args.items[i]});
+                    if (i < func.args.items.len - 1) {
+                        try writer.writeAll(", ");
+                    }
+                }
+                try writer.print(") -> {any}", .{func.ret});
+            },
+        }
+    }
 };
 
 /// Should probably just make these keywords

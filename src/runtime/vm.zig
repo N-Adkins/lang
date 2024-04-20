@@ -141,7 +141,7 @@ pub const VM = struct {
         const lhs = try self.eval_stack.pop();
         try self.eval_stack.push(.{
             .data = .{
-                .number = @divTrunc(lhs.data.number, rhs.data.number),
+                .number = lhs.data.number / rhs.data.number,
             },
         });
     }

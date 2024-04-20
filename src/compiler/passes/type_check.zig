@@ -85,7 +85,7 @@ pub const Pass = struct {
 
     fn typeCheck(self: *Pass, node: *ast.Node) Error!types.Type {
         switch (node.data) {
-            .integer_constant => return .number,
+            .number_constant => return .number,
             .var_get => |_| return try node.symbol_decl.?.decl_type.?.dupe(self.allocator),
             .block => |*block| {
                 for (block.list.items) |statement| {
@@ -99,7 +99,7 @@ pub const Pass = struct {
                 var rhs_type = try self.typeCheck(binary.rhs);
                 defer rhs_type.deinit(self.allocator);
                 if (!lhs_type.equal(&rhs_type)) {
-                    try self.err_ctx.newError(.mismatched_types, "Expected type {any} in right hand of binary expression, found type {any}", .{ lhs_type, rhs_type }, binary.rhs.index);
+                    try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in right hand of binary expression, found type \"{any}\"", .{ lhs_type, rhs_type }, binary.rhs.index);
                     return Error.MismatchedTypes;
                 }
                 return lhs_type;
@@ -150,7 +150,7 @@ pub const Pass = struct {
                     var expr_type = try self.typeCheck(var_decl.expr);
                     defer expr_type.deinit(self.allocator);
                     if (!expr_type.equal(decl_type)) {
-                        try self.err_ctx.newError(.mismatched_types, "Expected type {any} in variable declaration expression, found type {any}", .{ decl_type, expr_type }, var_decl.expr.index);
+                        try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in variable declaration expression, found type \"{any}\"", .{ decl_type, expr_type }, var_decl.expr.index);
                         return Error.MismatchedTypes;
                     }
                 } else {
@@ -168,7 +168,7 @@ pub const Pass = struct {
                 defer expr_type.deinit(self.allocator);
                 const ident_type = &node.symbol_decl.?.decl_type.?;
                 if (!expr_type.equal(ident_type)) {
-                    try self.err_ctx.newError(.mismatched_types, "Expected type {any} in variable declaration expression, found type {any}", .{ ident_type, expr_type }, var_assign.expr.index);
+                    try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in variable declaration expression, found type \"{any}\"", .{ ident_type, expr_type }, var_assign.expr.index);
                     return Error.MismatchedTypes;
                 }
                 return .void;
@@ -178,7 +178,7 @@ pub const Pass = struct {
                 defer ret_type.deinit(self.allocator);
                 const func_ret_type = self.func_stack.head.?.data.function.ret;
                 if (!ret_type.equal(func_ret_type)) {
-                    try self.err_ctx.newError(.mismatched_types, "Expected type {any} in function return statement, found type {any}", .{ func_ret_type, ret_type }, node.index);
+                    try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in function return statement, found type \"{any}\"", .{ func_ret_type, ret_type }, node.index);
                     return Error.MismatchedTypes;
                 }
                 return .void;
@@ -215,7 +215,7 @@ pub const Pass = struct {
                         }
                         for (0..func.args.items.len) |i| {
                             if (!func.args.items[i].equal(&arg_types.items[i])) {
-                                try self.err_ctx.newError(.mismatched_types, "Expected type {any} in function call argument number {d}, found {any}", .{ func.args.items[i], i, arg_types.items[i] }, node.index);
+                                try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in function call argument number {d}, found {any}", .{ func.args.items[i], i, arg_types.items[i] }, node.index);
                                 return Error.MismatchedTypes;
                             }
                         }

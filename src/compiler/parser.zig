@@ -257,15 +257,14 @@ pub const Parser = struct {
     fn parseNumberConstant(self: *Parser) Error!*ast.Node {
         const number = try self.expectToken(.number);
         const expression = try self.allocator.create(ast.Node);
-        const value = std.fmt.parseInt(
-            @TypeOf(expression.data.integer_constant.value),
+        const value = std.fmt.parseFloat(
+            @TypeOf(expression.data.number_constant.value),
             self.lexer.source[number.start..number.end],
-            10,
-        ) catch 0;
+        ) catch 0.0;
         expression.* = .{
             .index = number.start,
             .data = .{
-                .integer_constant = .{
+                .number_constant = .{
                     .value = value,
                 },
             },

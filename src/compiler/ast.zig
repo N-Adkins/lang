@@ -42,7 +42,7 @@ pub const Node = struct {
     symbol_decl: ?*SymbolDecl = null,
     index: usize,
     data: union(enum) {
-        integer_constant: IntegerConstant,
+        number_constant: NumberConstant,
         var_get: VarGet,
         unary_op: UnaryOp,
         binary_op: BinaryOp,
@@ -53,8 +53,8 @@ pub const Node = struct {
         return_stmt: Return,
     },
 
-    const IntegerConstant = struct {
-        value: i64,
+    const NumberConstant = struct {
+        value: f64,
     };
 
     const VarGet = struct {

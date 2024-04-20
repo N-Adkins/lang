@@ -79,8 +79,8 @@ pub const Pass = struct {
 
     fn genNode(self: *Pass, node: *ast.Node) Error!void {
         switch (node.data) {
-            .integer_constant => |*int_constant| {
-                try self.pushConstant(value.Value{ .data = .{ .number = int_constant.value } });
+            .number_constant => |*num_constant| {
+                try self.pushConstant(value.Value{ .data = .{ .number = num_constant.value } });
             },
             .var_get => |_| {
                 const decl = node.symbol_decl.?;
