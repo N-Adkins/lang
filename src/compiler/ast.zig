@@ -27,6 +27,11 @@ pub const Operator = union(enum) {
 pub const FunctionArg = struct {
     name: []const u8,
     arg_type: types.Type,
+
+    pub fn deinit(self: *FunctionArg, allocator: std.mem.Allocator) void {
+        self.arg_type.deinit(allocator);
+        allocator.free(self.name);
+    }
 };
 
 /// Abstract Syntax Tree Node, contains both
@@ -35,64 +40,111 @@ pub const Node = struct {
     symbol_decl: ?*Node = null,
     index: usize,
     data: union(enum) {
-        // Expressions
-        integer_constant: struct { value: i64 },
-        var_get: struct { name: []u8 },
-        unary_op: struct { op: Operator, expr: *Node },
-        binary_op: struct { op: Operator, lhs: *Node, rhs: *Node },
-        function_decl: struct { args: std.ArrayListUnmanaged(FunctionArg), ret_type: types.Type, body: *Node },
-
-        // Statements
-        block: struct { list: std.ArrayListUnmanaged(*Node) },
-        var_decl: struct { name: []u8, decl_type: ?types.Type, expr: *Node },
-        var_assign: struct { name: []u8, expr: *Node },
+        integer_constant: IntegerConstant,
+        var_get: VarGet,
+        unary_op: UnaryOp,
+        binary_op: BinaryOp,
+        //function_decl: FunctionDecl,
+        block: Block,
+        var_decl: VarDecl,
+        var_assign: VarAssign,
     },
+
+    const IntegerConstant = struct {
+        value: i64,
+    };
+
+    const VarGet = struct {
+        name: []u8,
+
+        pub fn deinit(self: *VarGet, allocator: std.mem.Allocator) void {
+            allocator.free(self.name);
+        }
+    };
+
+    const UnaryOp = struct {
+        op: Operator,
+        expr: *Node,
+
+        pub fn deinit(self: *UnaryOp, allocator: std.mem.Allocator) void {
+            self.expr.deinit(allocator);
+            allocator.destroy(self.expr);
+        }
+    };
+
+    const BinaryOp = struct {
+        op: Operator,
+        lhs: *Node,
+        rhs: *Node,
+
+        pub fn deinit(self: *BinaryOp, allocator: std.mem.Allocator) void {
+            self.lhs.deinit(allocator);
+            self.rhs.deinit(allocator);
+            allocator.destroy(self.lhs);
+            allocator.destroy(self.rhs);
+        }
+    };
+
+    const FunctionDecl = struct {
+        args: std.ArrayListUnmanaged(FunctionArg),
+        ret_type: types.Type,
+        body: *Node,
+
+        pub fn deinit(self: *FunctionDecl, allocator: std.mem.Allocator) void {
+            for (self.args.items) |*arg| {
+                arg.deinit(allocator);
+            }
+            self.args.deinit(allocator);
+            self.ret_type.deinit(allocator);
+            self.body.deinit(allocator);
+            allocator.destroy(self.body);
+        }
+    };
+
+    const Block = struct {
+        list: std.ArrayListUnmanaged(*Node),
+
+        pub fn deinit(self: *Block, allocator: std.mem.Allocator) void {
+            for (self.list.items) |statement| {
+                statement.deinit(allocator);
+                allocator.destroy(statement);
+            }
+            self.list.deinit(allocator);
+        }
+    };
+
+    const VarDecl = struct {
+        name: []u8,
+        decl_type: ?types.Type,
+        expr: *Node,
+
+        pub fn deinit(self: *VarDecl, allocator: std.mem.Allocator) void {
+            if (self.decl_type) |*decl_type| {
+                decl_type.deinit(allocator);
+            }
+            self.expr.deinit(allocator);
+            allocator.destroy(self.expr);
+            allocator.free(self.name);
+        }
+    };
+
+    const VarAssign = struct {
+        name: []u8,
+        expr: *Node,
+
+        pub fn deinit(self: *VarAssign, allocator: std.mem.Allocator) void {
+            self.expr.deinit(allocator);
+            allocator.destroy(self.expr);
+            allocator.free(self.name);
+        }
+    };
 
     pub fn deinit(self: *Node, allocator: std.mem.Allocator) void {
         switch (self.data) {
-            .integer_constant => {},
-            .var_get => |*var_get| allocator.free(var_get.name),
-            .unary_op => |*unary| {
-                unary.op.deinit(allocator);
-                unary.expr.deinit(allocator);
-                allocator.destroy(unary.expr);
-            },
-            .binary_op => |*binary| {
-                binary.op.deinit(allocator);
-                binary.lhs.deinit(allocator);
-                binary.rhs.deinit(allocator);
-                allocator.destroy(binary.lhs);
-                allocator.destroy(binary.rhs);
-            },
-            .function_decl => |*func_decl| {
-                for (func_decl.args.items) |*arg| {
-                    allocator.free(arg.name);
-                    arg.arg_type.deinit(allocator);
+            inline else => |*e| {
+                if (std.meta.hasMethod(@TypeOf(e), "deinit")) {
+                    e.deinit(allocator);
                 }
-                func_decl.args.deinit(allocator);
-                func_decl.ret_type.deinit(allocator);
-                func_decl.body.deinit(allocator);
-                allocator.destroy(func_decl.body);
-            },
-            .block => |*block| {
-                for (block.list.items) |node| {
-                    node.deinit(allocator);
-                    allocator.destroy(node);
-                }
-                block.*.list.deinit(allocator);
-            },
-            .var_decl => |*var_decl| {
-                var_decl.expr.deinit(allocator);
-                if (var_decl.decl_type) |*decl_type| {
-                    decl_type.deinit(allocator);
-                }
-                allocator.free(var_decl.name);
-                allocator.destroy(var_decl.expr);
-            },
-            .var_assign => |*var_assign| {
-                var_assign.expr.deinit(allocator);
-                allocator.free(var_assign.name);
-                allocator.destroy(var_assign.expr);
             },
         }
     }

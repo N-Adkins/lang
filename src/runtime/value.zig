@@ -13,5 +13,5 @@ pub const Value = struct {
 };
 
 test "Value Word Size" {
-    std.testing.expect(@sizeOf(Value) <= @sizeOf(*anyopaque));
+    try std.testing.expect(@sizeOf(Value) <= @sizeOf(*anyopaque));
 }
