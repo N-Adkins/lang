@@ -293,6 +293,11 @@ pub const Parser = struct {
             var arg_type = try self.parseType();
             errdefer arg_type.deinit(self.allocator);
 
+            if (arg_type.equal(&.void)) {
+                try self.err_ctx.newError(.unexpected_token, "Void is a not a permitted argument type", .{}, name.end);
+                return Error.UnexpectedToken;
+            }
+
             try args.append(self.allocator, .{
                 .name = try self.allocator.dupe(u8, self.lexer.source[name.start..name.end]),
                 .decl_type = arg_type,
@@ -371,6 +376,10 @@ pub const Parser = struct {
         var maybe_type_decl: ?types.Type = switch (next.tag) {
             .colon => blk: {
                 const decl = try self.parseType();
+                if (decl.equal(&.void)) {
+                    try self.err_ctx.errorFromToken(.unexpected_token, "Void is a not a permitted variable type", .{}, next);
+                    return Error.UnexpectedToken;
+                }
                 _ = try self.expectToken(.equals);
                 break :blk decl;
             },

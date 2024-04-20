@@ -155,6 +155,10 @@ pub const Pass = struct {
                     }
                 } else {
                     const expr_type = try self.typeCheck(var_decl.expr);
+                    if (expr_type.equal(&.void)) {
+                        try self.err_ctx.newError(.mismatched_types, "Void is not a valid inferred variable type", .{}, var_decl.expr.index);
+                        return Error.MismatchedTypes;
+                    }
                     var_decl.symbol.decl_type = expr_type;
                 }
                 return .void;
