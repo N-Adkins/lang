@@ -1,3 +1,4 @@
 var test := 3 * (5 - 2);
 var other := (20 - 8) * test;
-test * other;
+var test_func := fn(arg: number) -> void {
+};

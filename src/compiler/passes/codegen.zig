@@ -15,7 +15,6 @@ pub const Error = error{
 /// Later on this becomes a STACK_ALLOC instruction to reserve local variable space.
 const FuncFrame = struct {
     func: usize,
-    byte_start: usize,
     local_count: u8 = 0,
     map: std.AutoHashMapUnmanaged(*anyopaque, u8) = std.AutoHashMapUnmanaged(*anyopaque, u8){},
 };
@@ -58,22 +57,23 @@ pub const Pass = struct {
     }
 
     pub fn run(self: *Pass) Error!void {
-        try self.genFunc(self.root);
+        _ = try self.genFunc(self.root);
     }
 
     /// Wrapper over genNode but with handling local variable allocation
-    fn genFunc(self: *Pass, body: *ast.Node) Error!void {
+    fn genFunc(self: *Pass, body: *ast.Node) Error!usize {
         _ = try self.pushFrame();
         try self.genNode(body);
         const frame = self.func_stack.first.?.data;
         const stack_alloc = &[2]u8{ @intFromEnum(byte.Opcode.STACK_ALLOC), frame.local_count };
-        try self.bytecode.items[frame.func].code.insertSlice(self.allocator, frame.byte_start, stack_alloc);
+        try self.bytecode.items[frame.func].code.insertSlice(self.allocator, 0, stack_alloc);
         self.popFrame();
+        return frame.func;
     }
 
     fn genNode(self: *Pass, node: *ast.Node) Error!void {
         switch (node.data) {
-            .integer_constant => |int_constant| {
+            .integer_constant => |*int_constant| {
                 try self.pushConstant(value.Value{ .data = .{ .number = int_constant.value } });
             },
             .var_get => |_| {
@@ -82,7 +82,7 @@ pub const Pass = struct {
                 try self.pushOp(.VAR_GET);
                 try self.pushByte(index);
             },
-            .binary_op => |binary| {
+            .binary_op => |*binary| {
                 const op: byte.Opcode = switch (binary.op) {
                     .add => .ADD,
                     .sub => .SUB,
@@ -94,7 +94,7 @@ pub const Pass = struct {
                 try self.genNode(binary.rhs);
                 try self.pushOp(op);
             },
-            .unary_op => |unary| {
+            .unary_op => |*unary| {
                 switch (unary.op) {
                     .call => |call| {
                         for (call.args.items) |expr| {
@@ -106,18 +106,26 @@ pub const Pass = struct {
                     else => unreachable,
                 }
             },
-            .block => |block| {
+            .function_decl => |*func_decl| {
+                const func = try self.genFunc(func_decl.body);
+                try self.pushConstant(value.Value{
+                    .data = .{
+                        .func = func,
+                    },
+                });
+            },
+            .block => |*block| {
                 for (block.list.items) |statement| {
                     try self.genNode(statement);
                 }
             },
-            .var_decl => |var_decl| {
-                const index = try self.pushLocal(node);
+            .var_decl => |*var_decl| {
+                const index = try self.pushLocal(&var_decl.symbol);
                 try self.genNode(var_decl.expr);
                 try self.pushOp(.VAR_SET);
                 try self.pushByte(index);
             },
-            .var_assign => |var_assign| {
+            .var_assign => |*var_assign| {
                 const decl = node.symbol_decl.?;
                 const index = try self.getLocal(decl);
                 try self.genNode(var_assign.expr);
@@ -152,7 +160,7 @@ pub const Pass = struct {
     }
 
     /// Pushes a local variable onto the current function frame
-    fn pushLocal(self: *Pass, decl: *ast.Node) Error!u8 {
+    fn pushLocal(self: *Pass, decl: *ast.SymbolDecl) Error!u8 {
         const head = self.func_stack.first.?;
         const index = head.data.local_count;
         try head.data.map.put(self.allocator, @ptrCast(decl), index);
@@ -166,7 +174,7 @@ pub const Pass = struct {
 
     /// Checks the current function frame for a local variable based on its
     /// declaration
-    fn getLocal(self: *Pass, decl: *ast.Node) Error!u8 {
+    fn getLocal(self: *Pass, decl: *ast.SymbolDecl) Error!u8 {
         const head = self.func_stack.first.?;
         const index = head.data.map.get(@ptrCast(decl)).?;
         return index;
@@ -177,7 +185,6 @@ pub const Pass = struct {
         const main_node = try self.allocator.create(FrameNode);
         main_node.data = FuncFrame{
             .func = self.func_count,
-            .byte_start = self.bytecode.items.len,
         };
         try self.bytecode.append(self.allocator, ByteFunc{});
         self.func_count += 1;

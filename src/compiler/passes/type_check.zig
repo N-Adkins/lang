@@ -30,7 +30,7 @@ pub const Pass = struct {
     fn typeCheck(self: *Pass, node: *ast.Node) Error!types.Type {
         switch (node.data) {
             .integer_constant => return .number,
-            .var_get => |_| return node.symbol_decl.?.*.data.var_decl.decl_type.?,
+            .var_get => |_| return node.symbol_decl.?.decl_type.?,
             .block => |block| {
                 for (block.list.items) |statement| {
                     var stmt_type = try self.typeCheck(statement);
@@ -49,26 +49,26 @@ pub const Pass = struct {
                 return lhs_type;
             },
             .unary_op => |_| return try self.checkUnary(node),
+            .function_decl => |*func_decl| return try self.typeCheck(func_decl.body),
             .var_decl => |*var_decl| {
-                if (var_decl.decl_type) |*decl_type| {
+                if (var_decl.symbol.decl_type) |*decl_type| {
                     var expr_type = try self.typeCheck(var_decl.expr);
                     defer expr_type.deinit(self.allocator);
                     if (!expr_type.equal(decl_type)) {
-                        try self.err_ctx.newError(.mismatched_types, "Expected type {any} in variable declaration expression, found type {any}", .{ var_decl.decl_type, expr_type }, var_decl.expr.index);
+                        try self.err_ctx.newError(.mismatched_types, "Expected type {any} in variable declaration expression, found type {any}", .{ decl_type, expr_type }, var_decl.expr.index);
                         return Error.MismatchedTypes;
                     }
-                    return .void;
+                } else {
+                    const expr_type = try self.typeCheck(var_decl.expr);
+                    var_decl.symbol.decl_type = expr_type;
                 }
-
-                const expr_type = try self.typeCheck(var_decl.expr);
-                var_decl.decl_type = expr_type;
                 return .void;
             },
             .var_assign => |var_assign| {
                 var expr_type = try self.typeCheck(var_assign.expr);
                 defer expr_type.deinit(self.allocator);
 
-                var ident_type = &node.symbol_decl.?.data.var_decl.decl_type.?;
+                var ident_type = &node.symbol_decl.?.decl_type.?;
                 defer ident_type.deinit(self.allocator);
 
                 if (!expr_type.equal(ident_type)) {
@@ -77,7 +77,6 @@ pub const Pass = struct {
                 }
                 return .void;
             },
-            //else => return .void,
         }
     }
 

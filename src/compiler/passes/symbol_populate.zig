@@ -17,7 +17,7 @@ const SymbolStack = struct {
     const Node = struct {
         next: ?*Node = null,
         prev: ?*Node = null,
-        symbol: *ast.Node,
+        symbol: *ast.SymbolDecl,
     };
     allocator: std.mem.Allocator,
     front: ?*Node = null,
@@ -38,7 +38,7 @@ const SymbolStack = struct {
         }
     }
 
-    pub fn push(self: *SymbolStack, symbol: *ast.Node) Error!void {
+    pub fn push(self: *SymbolStack, symbol: *ast.SymbolDecl) Error!void {
         const node = try self.allocator.create(Node);
         node.symbol = symbol;
         node.next = self.front;
@@ -48,7 +48,7 @@ const SymbolStack = struct {
         self.front = node;
     }
 
-    pub fn pop(self: *SymbolStack) ?*ast.Node {
+    pub fn pop(self: *SymbolStack) ?*ast.SymbolDecl {
         if (self.front) |front| {
             const node = front.symbol;
             self.front = front.next;
@@ -59,18 +59,12 @@ const SymbolStack = struct {
     }
 
     /// Looks for a symbol in the stack. Fairly inefficient
-    pub fn find(self: *SymbolStack, name: []const u8) ?*ast.Node {
+    pub fn find(self: *SymbolStack, name: []const u8) ?*ast.SymbolDecl {
         var iter = self.front;
         while (iter) |node| {
             iter = node.next;
-            const str: ?[]const u8 = switch (node.symbol.data) {
-                .var_decl => |var_assign| var_assign.name,
-                else => null,
-            };
-            if (str) |slice| {
-                if (std.mem.eql(u8, name, slice)) {
-                    return node.symbol;
-                }
+            if (std.mem.eql(u8, name, node.symbol.name)) {
+                return node.symbol;
             }
         }
         return null;
@@ -119,27 +113,35 @@ pub const Pass = struct {
         switch (node.data) {
             .integer_constant => {},
             .var_get => |_| {},
-            .block => |block| {
+            .block => |*block| {
                 const frame = self.stack.getFrame();
                 for (block.list.items) |statement| {
                     try self.populateNode(statement);
                 }
                 self.stack.popFrame(frame);
             },
-            .binary_op => |binary| {
+            .binary_op => |*binary| {
                 try self.populateNode(binary.lhs);
                 try self.populateNode(binary.rhs);
             },
-            .unary_op => |unary| try self.populateNode(unary.expr),
-            .var_decl => |var_decl| {
-                if (self.stack.find(var_decl.name)) |_| {
-                    try self.err_ctx.newError(.symbol_shadowing, "Found symbol shadowing previous declaration, \"{s}\"", .{var_decl.name}, node.index);
+            .unary_op => |*unary| try self.populateNode(unary.expr),
+            .function_decl => |*func_decl| {
+                const frame = self.stack.getFrame();
+                for (func_decl.args.items) |*arg| {
+                    try self.stack.push(arg);
+                }
+                try self.populateNode(func_decl.body);
+                self.stack.popFrame(frame);
+            },
+            .var_decl => |*var_decl| {
+                if (self.stack.find(var_decl.symbol.name)) |_| {
+                    try self.err_ctx.newError(.symbol_shadowing, "Found symbol shadowing previous declaration, \"{s}\"", .{var_decl.symbol.name}, node.index);
                     return Error.SymbolShadowing;
                 }
-                try self.stack.push(node);
+                try self.stack.push(&var_decl.symbol);
                 try self.populateNode(var_decl.expr);
             },
-            .var_assign => |var_assign| try self.populateNode(var_assign.expr),
+            .var_assign => |*var_assign| try self.populateNode(var_assign.expr),
         }
     }
 };

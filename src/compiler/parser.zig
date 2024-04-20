@@ -186,6 +186,7 @@ pub const Parser = struct {
             .l_paren => try self.parseParen(),
             .identifier => try self.parseVarGet(),
             .number => try self.parseNumberConstant(),
+            .keyword_fn => try self.parseFunctionDecl(),
             else => {
                 try self.err_ctx.errorFromToken(.unexpected_token, "Expected expression, found [{s},\"{s}\"]", .{ @tagName(self.previous.?.tag), self.lexer.source[self.previous.?.start..self.previous.?.end] }, self.previous.?);
                 return Error.UnexpectedToken;
@@ -272,6 +273,57 @@ pub const Parser = struct {
         return expression;
     }
 
+    fn parseFunctionDecl(self: *Parser) Error!*ast.Node {
+        const start = try self.expectToken(.keyword_fn);
+        _ = try self.expectToken(.l_paren);
+
+        var args = std.ArrayListUnmanaged(ast.SymbolDecl){};
+        errdefer {
+            for (args.items) |*arg| {
+                arg.deinit(self.allocator);
+            }
+            args.deinit(self.allocator);
+        }
+
+        while (self.previous != null and self.previous.?.tag != .r_paren) {
+            const name = try self.expectToken(.identifier);
+
+            _ = try self.expectToken(.colon);
+
+            var arg_type = try self.parseType();
+            errdefer arg_type.deinit(self.allocator);
+
+            try args.append(self.allocator, .{
+                .name = try self.allocator.dupe(u8, self.lexer.source[name.start..name.end]),
+                .decl_type = arg_type,
+            });
+
+            if (self.previous != null and self.previous.?.tag == .comma) {
+                _ = self.nextToken();
+            }
+        }
+
+        _ = try self.expectToken(.r_paren);
+        _ = try self.expectToken(.right_arrow);
+
+        const ret_type = try self.parseType();
+        const body = try self.parseBlock();
+
+        const node = try self.allocator.create(ast.Node);
+        node.* = .{
+            .index = start.start,
+            .data = .{
+                .function_decl = .{
+                    .args = args,
+                    .ret_type = ret_type,
+                    .body = body,
+                },
+            },
+        };
+
+        return node;
+    }
+
     fn parseStatement(self: *Parser) Error!*ast.Node {
         if (self.previous == null) {
             try self.err_ctx.newError(.unexpected_end, "Expected statement, found end", .{}, null);
@@ -315,7 +367,7 @@ pub const Parser = struct {
 
         const next = try self.expectToken(null);
 
-        var type_decl: ?types.Type = switch (next.tag) {
+        var maybe_type_decl: ?types.Type = switch (next.tag) {
             .colon => blk: {
                 const decl = try self.parseType();
                 _ = try self.expectToken(.equals);
@@ -328,7 +380,7 @@ pub const Parser = struct {
             },
         };
         errdefer {
-            if (type_decl) |*decl| {
+            if (maybe_type_decl) |*decl| {
                 decl.deinit(self.allocator);
             }
         }
@@ -344,12 +396,13 @@ pub const Parser = struct {
 
         statement.* = .{ .index = identifier.start, .data = .{
             .var_decl = .{
-                .name = try self.allocator.dupe(u8, self.lexer.source[identifier.start..identifier.end]),
-                .decl_type = type_decl,
+                .symbol = .{
+                    .name = try self.allocator.dupe(u8, self.lexer.source[identifier.start..identifier.end]),
+                    .decl_type = maybe_type_decl,
+                },
                 .expr = expression,
             },
         } };
-
         return statement;
     }
 

@@ -24,12 +24,14 @@ pub const Operator = union(enum) {
     }
 };
 
-pub const FunctionArg = struct {
+pub const SymbolDecl = struct {
     name: []const u8,
-    arg_type: types.Type,
+    decl_type: ?types.Type,
 
-    pub fn deinit(self: *FunctionArg, allocator: std.mem.Allocator) void {
-        self.arg_type.deinit(allocator);
+    pub fn deinit(self: *SymbolDecl, allocator: std.mem.Allocator) void {
+        if (self.decl_type) |*decl_type| {
+            decl_type.deinit(allocator);
+        }
         allocator.free(self.name);
     }
 };
@@ -37,14 +39,14 @@ pub const FunctionArg = struct {
 /// Abstract Syntax Tree Node, contains both
 /// statements and expressions
 pub const Node = struct {
-    symbol_decl: ?*Node = null,
+    symbol_decl: ?*SymbolDecl = null,
     index: usize,
     data: union(enum) {
         integer_constant: IntegerConstant,
         var_get: VarGet,
         unary_op: UnaryOp,
         binary_op: BinaryOp,
-        //function_decl: FunctionDecl,
+        function_decl: FunctionDecl,
         block: Block,
         var_decl: VarDecl,
         var_assign: VarAssign,
@@ -86,7 +88,7 @@ pub const Node = struct {
     };
 
     const FunctionDecl = struct {
-        args: std.ArrayListUnmanaged(FunctionArg),
+        args: std.ArrayListUnmanaged(SymbolDecl),
         ret_type: types.Type,
         body: *Node,
 
@@ -114,17 +116,13 @@ pub const Node = struct {
     };
 
     const VarDecl = struct {
-        name: []u8,
-        decl_type: ?types.Type,
+        symbol: SymbolDecl,
         expr: *Node,
 
         pub fn deinit(self: *VarDecl, allocator: std.mem.Allocator) void {
-            if (self.decl_type) |*decl_type| {
-                decl_type.deinit(allocator);
-            }
+            self.symbol.deinit(allocator);
             self.expr.deinit(allocator);
             allocator.destroy(self.expr);
-            allocator.free(self.name);
         }
     };
 
