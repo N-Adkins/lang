@@ -12,7 +12,22 @@ pub fn main() !void {
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
 
-    const str = @embedFile("examples/test.txt");
+    if (std.os.argv.len < 2) {
+        std.debug.print("Expected filepath\n", .{});
+        return;
+    }
+
+    const filepath: []const u8 = std.mem.span(std.os.argv[1]);
+
+    const file = std.fs.cwd().openFile(filepath, .{}) catch |err| {
+        std.debug.print("Failed to load file \"{s}\": {}\n", .{ filepath, err });
+        return;
+    };
+    defer file.close();
+
+    const reader = file.reader();
+    const str = try reader.readAllAlloc(allocator, 0xFFFF);
+    defer allocator.free(str);
 
     var compile_result = compiler.compile(allocator, str) catch {
         return;
