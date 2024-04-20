@@ -1,5 +1,5 @@
-var test_func := fn(arg: number) -> void {
-    arg * arg;
+var test := 5;
+var test_func := fn (arg: number) -> void {
+    arg * arg * 2;
 };
-
-test_func(32);
+test_func(test);

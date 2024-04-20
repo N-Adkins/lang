@@ -104,7 +104,7 @@ pub const Pass = struct {
 
     /// Made this its own function because it's long
     pub fn checkUnary(self: *Pass, node: *ast.Node) Error!types.Type {
-        const unary = node.data.unary_op;
+        const unary = &node.data.unary_op;
 
         var expr_type = try self.typeCheck(unary.expr);
         defer expr_type.deinit(self.allocator);
