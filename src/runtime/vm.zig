@@ -85,6 +85,12 @@ pub const VM = struct {
             return Error.InvalidConstant;
         }
         const constant = try self.constants[index].dupe(self.allocator);
+        switch (constant.data) {
+            .object => |obj| {
+                self.garbage_collector.linkObject(obj);
+            },
+            else => {},
+        }
         try self.eval_stack.push(constant);
     }
 

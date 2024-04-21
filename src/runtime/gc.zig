@@ -23,6 +23,12 @@ pub const GC = struct {
         const object = try self.allocator.create(value.Object);
         object.next = self.record_list;
         self.record_list = object;
+        return object;
+    }
+
+    pub fn linkObject(self: *GC, object: *value.Object) void {
+        object.next = self.record_list;
+        self.record_list = object;
     }
 
     pub fn run(self: *GC, stack: []value.Value) void {

@@ -52,6 +52,9 @@ pub const Pass = struct {
         for (self.bytecode.items) |*func| {
             func.deinit(self.allocator);
         }
+        for (self.constants.items) |*constant| {
+            constant.deinit(self.allocator);
+        }
         self.bytecode.deinit(self.allocator);
         self.constants.deinit(self.allocator);
     }
@@ -79,8 +82,17 @@ pub const Pass = struct {
 
     fn genNode(self: *Pass, node: *ast.Node) Error!void {
         switch (node.data) {
-            .number_constant => |*num_constant| {
-                try self.pushConstant(value.Value{ .data = .{ .number = num_constant.value } });
+            .number_constant => |*num| {
+                try self.pushConstant(value.Value{ .data = .{ .number = num.value } });
+            },
+            .string_constant => |*str| {
+                const object = try self.allocator.create(value.Object);
+                object.data = .{
+                    .string = .{
+                        .raw = try self.allocator.dupe(u8, str.raw),
+                    },
+                };
+                try self.pushConstant(value.Value{ .data = .{ .object = object } });
             },
             .var_get => |_| {
                 const decl = node.symbol_decl.?;

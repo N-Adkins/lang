@@ -4,4 +4,6 @@ var test_func := fn (i: number, j: number) -> number {
     return i - j / 72;
 };
 
+"TEST";
+
 test_func = test_func;

@@ -43,6 +43,7 @@ pub const Node = struct {
     index: usize,
     data: union(enum) {
         number_constant: NumberConstant,
+        string_constant: StringConstant,
         var_get: VarGet,
         unary_op: UnaryOp,
         binary_op: BinaryOp,
@@ -55,6 +56,14 @@ pub const Node = struct {
 
     const NumberConstant = struct {
         value: f64,
+    };
+
+    const StringConstant = struct {
+        raw: []const u8,
+
+        pub fn deinit(self: *StringConstant, allocator: std.mem.Allocator) void {
+            allocator.free(self.raw);
+        }
     };
 
     const VarGet = struct {

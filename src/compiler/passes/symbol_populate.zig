@@ -161,6 +161,7 @@ pub const Pass = struct {
 
         switch (node.data) {
             .number_constant => {},
+            .string_constant => {},
             .var_get => |_| {},
             .block => |*block| {
                 var stack = self.stack_stack.peek().?;

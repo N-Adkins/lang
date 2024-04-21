@@ -13,11 +13,15 @@ const type_pass = @import("passes/type_check.zig");
 /// during the code generation pass
 pub const CompileResult = struct {
     bytecode: [][]const u8,
-    constants: []const value.Value,
+    constants: []value.Value,
 
     pub fn deinit(self: *CompileResult, allocator: std.mem.Allocator) void {
         for (self.bytecode) |func| {
             allocator.free(func);
+        }
+        for (self.constants) |*constant| {
+            var constant_ref = constant;
+            constant_ref.deinit(allocator);
         }
         allocator.free(self.bytecode);
         allocator.free(self.constants);
@@ -68,7 +72,10 @@ fn runPasses(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, source: [
     for (0..codegen_pass.bytecode.items.len) |i| {
         bytecode[i] = try allocator.dupe(u8, codegen_pass.bytecode.items[i].code.items);
     }
-    const constants = try allocator.dupe(value.Value, codegen_pass.constants.items);
+    const constants = try allocator.alloc(value.Value, codegen_pass.constants.items.len);
+    for (0..constants.len) |i| {
+        constants[i] = try codegen_pass.constants.items[i].dupe(allocator);
+    }
 
     return CompileResult{ .bytecode = bytecode, .constants = constants };
 }

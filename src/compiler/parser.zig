@@ -186,6 +186,7 @@ pub const Parser = struct {
             .l_paren => try self.parseParen(),
             .identifier => try self.parseVarGet(),
             .number => try self.parseNumberConstant(),
+            .string_literal => try self.parseStringConstant(),
             .keyword_fn => try self.parseFunctionDecl(),
             else => {
                 try self.err_ctx.errorFromToken(.unexpected_token, "Expected expression, found [{s},\"{s}\"]", .{ @tagName(self.previous.?.tag), self.lexer.source[self.previous.?.start..self.previous.?.end] }, self.previous.?);
@@ -270,6 +271,20 @@ pub const Parser = struct {
             },
         };
         return expression;
+    }
+
+    fn parseStringConstant(self: *Parser) Error!*ast.Node {
+        const string = try self.expectToken(.string_literal);
+        const node = try self.allocator.create(ast.Node);
+        node.* = .{
+            .index = string.start,
+            .data = .{
+                .string_constant = .{
+                    .raw = try self.allocator.dupe(u8, self.lexer.source[string.start..string.end]),
+                },
+            },
+        };
+        return node;
     }
 
     fn parseFunctionDecl(self: *Parser) Error!*ast.Node {

@@ -3,6 +3,7 @@ const std = @import("std");
 pub const Type = union(enum) {
     void,
     number,
+    string,
     function: struct { args: std.ArrayListUnmanaged(Type) = std.ArrayListUnmanaged(Type){}, ret: *Type },
 
     pub fn deinit(self: *Type, allocator: std.mem.Allocator) void {
@@ -70,6 +71,7 @@ pub const Type = union(enum) {
         switch (self) {
             .void => try writer.writeAll("void"),
             .number => try writer.writeAll("number"),
+            .string => try writer.writeAll("string"),
             .function => |func| {
                 try writer.writeAll("fn (");
                 for (0..func.args.items.len) |i| {
@@ -87,5 +89,6 @@ pub const Type = union(enum) {
 /// Should probably just make these keywords
 pub const builtin_lookup = std.ComptimeStringMap(Type, .{
     .{ "number", Type.number },
+    .{ "string", Type.string },
     .{ "void", Type.void },
 });

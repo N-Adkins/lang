@@ -10,6 +10,17 @@ pub const Value = struct {
         object: *Object,
     },
 
+    // Only use this for constants, not during runtime.
+    pub fn deinit(self: *Value, allocator: std.mem.Allocator) void {
+        switch (self.data) {
+            .object => |obj| {
+                obj.deinit(allocator);
+                allocator.destroy(obj);
+            },
+            else => {},
+        }
+    }
+
     pub fn format(self: Value, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
         _ = fmt;
         _ = options;
@@ -25,12 +36,9 @@ pub const Value = struct {
         var new = Value{ .data = undefined };
 
         switch (self.data) {
-            inline else => |*inner| {
-                if (std.meta.hasMethod(@TypeOf(inner), "dupe")) {
-                    new = try inner.dupe(allocator);
-                } else {
-                    new = self.*;
-                }
+            .object => |obj| new.data = .{ .object = try obj.dupe(allocator) },
+            inline else => |_| {
+                new.data = self.data;
             },
         }
 
@@ -61,12 +69,9 @@ pub const Object = struct {
         errdefer allocator.destroy(new);
 
         switch (self.data) {
-            inline else => |*inner| {
-                if (std.meta.hasMethod(@TypeOf(inner), "dupe")) {
-                    new.data = try inner.dupe(allocator);
-                } else {
-                    new.* = self.*;
-                }
+            .string => |str| {
+                var str_ref = str;
+                new.data.string = try str_ref.dupe(allocator);
             },
         }
 
