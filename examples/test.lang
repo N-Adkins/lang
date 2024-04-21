@@ -1,7 +1,8 @@
-var test := 1238;
-
-var gen_str := fn () -> string {
-    return "Test string";
+var func_generator := fn () -> fn () -> void {
+    return fn () -> void {
+        print("idk");
+        return;
+    };
 };
 
-print(37812712);
+func_generator()();

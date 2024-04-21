@@ -120,12 +120,8 @@ pub const Pass = struct {
                     try arg_types.append(self.allocator, try arg.decl_type.?.dupe(self.allocator));
                 }
 
-                var ret = try self.allocator.create(types.Type);
+                const ret = try self.allocator.create(types.Type);
                 ret.* = try func_decl.ret_type.dupe(self.allocator);
-                errdefer {
-                    ret.deinit(self.allocator);
-                    self.allocator.destroy(ret);
-                }
 
                 var func_type = types.Type{
                     .function = .{
@@ -135,15 +131,17 @@ pub const Pass = struct {
                 };
                 errdefer func_type.deinit(self.allocator);
 
-                var dupe = try func_type.dupe(self.allocator);
-                defer dupe.deinit(self.allocator);
+                const dupe = try func_type.dupe(self.allocator);
 
                 _ = try self.func_stack.push(self.allocator, dupe);
 
                 var body_type = try self.typeCheck(func_decl.body);
                 defer body_type.deinit(self.allocator);
 
-                _ = self.func_stack.pop(self.allocator);
+                if (self.func_stack.pop(self.allocator)) |popped| {
+                    var popped_ref = popped;
+                    popped_ref.deinit(self.allocator);
+                }
 
                 return func_type;
             },
@@ -229,7 +227,7 @@ pub const Pass = struct {
                                 return Error.MismatchedTypes;
                             }
                         }
-                        return func.ret.*;
+                        return try func.ret.dupe(self.allocator);
                     },
                     else => {
                         try self.err_ctx.newError(.mismatched_types, "Expected function type in call expression, found type {any}", .{expr_type}, node.index);
