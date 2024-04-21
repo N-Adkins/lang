@@ -3,6 +3,7 @@
 
 const std = @import("std");
 const byte = @import("bytecode.zig");
+const gc = @import("gc.zig");
 const stack = @import("stack.zig");
 const value = @import("value.zig");
 
@@ -27,6 +28,7 @@ pub const VM = struct {
     constants: []const value.Value,
     eval_stack: stack.Stack(value.Value),
     call_stack: stack.Stack(CallFrame),
+    garbage_collector: gc.GC,
     pc: usize = 0,
     allocator: std.mem.Allocator,
 
@@ -36,6 +38,7 @@ pub const VM = struct {
             .constants = constants,
             .eval_stack = try stack.Stack(value.Value).init(allocator, 0xFF),
             .call_stack = try stack.Stack(CallFrame).init(allocator, 0xFF),
+            .garbage_collector = gc.GC.init(allocator),
             .allocator = allocator,
         };
         try vm.call_stack.push(CallFrame{ .index = 0, .func = 0, .stack_offset = 0, .root = true });
@@ -52,6 +55,7 @@ pub const VM = struct {
         while (self.pc < self.bytes[self.current_func].len) {
             try self.nextInstr();
         }
+        self.garbage_collector.run(self.eval_stack.items[0..self.eval_stack.head]);
         while (self.eval_stack.head > 0) {
             const item = try self.eval_stack.pop();
             std.debug.print("{any}\n", .{item});
@@ -80,7 +84,7 @@ pub const VM = struct {
         if (index >= self.constants.len) {
             return Error.InvalidConstant;
         }
-        const constant = self.constants[index];
+        const constant = try self.constants[index].dupe(self.allocator);
         try self.eval_stack.push(constant);
     }
 

@@ -1,41 +1,67 @@
 const std = @import("std");
-
-/// Object Interface
-pub const Object = struct {
-    marked: bool = false,
-    ptr: *anyopaque,
-    vtable: struct {
-        deinit: *const fn (ptr: *anyopaque, allocator: std.mem.Allocator) void,
-    },
-
-    pub fn init(init_ptr: anytype, init_allocator: std.mem.Allocator) std.mem.Allocator.Error!*Object {
-        const vtable_gen = struct {
-            fn deinit(ptr: *anyopaque, allocator: std.mem.Allocator) void {
-                const self: @TypeOf(ptr) = @ptrCast(@alignCast(ptr));
-                return self.deinit(allocator);
-            }
-        };
-
-        const obj = try init_allocator.create(Object);
-        obj.* = .{ .ptr = init_ptr, .vtable = .{
-            .deinit = vtable_gen.deinit,
-        } };
-
-        return obj;
-    }
-
-    pub fn deinit(self: *Object, allocator: std.mem.Allocator) void {
-        self.vtable.deinit(self.ptr, allocator);
-        allocator.destroy(self);
-    }
-};
+const value = @import("value.zig");
 
 pub const GC = struct {
+    record_list: ?*value.Object = null,
     allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) GC {
         return GC{
             .allocator = allocator,
         };
+    }
+
+    pub fn deinit(self: *GC) void {
+        var iter = self.record_list;
+        while (iter) |obj| {
+            obj.deinit(self.allocator);
+            iter = obj.next;
+        }
+    }
+
+    pub fn newObject(self: *GC) std.mem.Allocator.Error!*value.Object {
+        const object = try self.allocator.create(value.Object);
+        object.next = self.record_list;
+        self.record_list = object;
+    }
+
+    pub fn run(self: *GC, stack: []value.Value) void {
+        // Mark all referenced objects
+        for (stack) |*item| {
+            self.markValue(item);
+        }
+
+        // Check all objects and delete objects that aren't marked
+        var iter = self.record_list;
+        var prev: ?*value.Object = null;
+        while (iter) |obj| {
+            prev = obj;
+            iter = obj.next;
+            if (!obj.marked) {
+                if (prev) |prev_ptr| {
+                    prev_ptr.next = obj.next;
+                } else {
+                    self.record_list = obj.next;
+                }
+                // Destroy unmarked objects as they have
+                // no references
+                obj.deinit(self.allocator);
+                self.allocator.destroy(obj);
+            } else {
+                // Unmark marked objects but leave them
+                obj.marked = false;
+            }
+        }
+    }
+
+    fn markValue(self: *GC, item: *value.Value) void {
+        _ = self;
+        switch (item.data) {
+            .number => |_| {},
+            .func => |_| {},
+            .object => |obj| {
+                obj.marked = true;
+            },
+        }
     }
 };

@@ -1,14 +1,13 @@
 //! Runtime value data, universal tagged union for any variable / constant
 
 const std = @import("std");
-const gc = @import("gc.zig");
 
 // data must be 8 bytes or lower
 pub const Value = struct {
     data: union(enum) {
         number: f64,
         func: usize, // func table index
-        object: *gc.Object,
+        object: *Object,
     },
 
     pub fn format(self: Value, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void {
@@ -20,6 +19,72 @@ pub const Value = struct {
             .func => |func| try writer.print("[Function {d}]", .{func}),
             .object => |_| try writer.print("[Object object]", .{}),
         }
+    }
+
+    pub fn dupe(self: *const Value, allocator: std.mem.Allocator) std.mem.Allocator.Error!Value {
+        var new = Value{ .data = undefined };
+
+        switch (self.data) {
+            inline else => |*inner| {
+                if (std.meta.hasMethod(@TypeOf(inner), "dupe")) {
+                    new = try inner.dupe(allocator);
+                } else {
+                    new = self.*;
+                }
+            },
+        }
+
+        return new;
+    }
+};
+
+pub const Object = struct {
+    next: ?*Object = null, // used for naive GC impl for now
+    marked: bool = false, // this too
+
+    data: union(enum) {
+        string: String,
+    },
+
+    pub fn deinit(self: *Object, allocator: std.mem.Allocator) void {
+        switch (self.data) {
+            inline else => |*e| {
+                if (std.meta.hasMethod(@TypeOf(e), "deinit")) {
+                    e.deinit(allocator);
+                }
+            },
+        }
+    }
+
+    pub fn dupe(self: *const Object, allocator: std.mem.Allocator) std.mem.Allocator.Error!*Object {
+        const new = try allocator.create(Object);
+        errdefer allocator.destroy(new);
+
+        switch (self.data) {
+            inline else => |*inner| {
+                if (std.meta.hasMethod(@TypeOf(inner), "dupe")) {
+                    new.data = try inner.dupe(allocator);
+                } else {
+                    new.* = self.*;
+                }
+            },
+        }
+
+        return new;
+    }
+};
+
+pub const String = struct {
+    raw: []const u8,
+
+    pub fn deinit(self: *String, allocator: std.mem.Allocator) void {
+        allocator.free(self.raw);
+    }
+
+    pub fn dupe(self: *String, allocator: std.mem.Allocator) std.mem.Allocator.Error!String {
+        return String{
+            .raw = try allocator.dupe(u8, self.raw),
+        };
     }
 };
 

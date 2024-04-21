@@ -6,6 +6,7 @@ const err = @import("error.zig");
 pub const TokenTag = enum {
     identifier,
     number,
+    string_literal,
     l_paren,
     r_paren,
     l_curly,
@@ -54,6 +55,7 @@ pub const Token = struct {
 
 pub const Error = error{
     UnexpectedCharacter,
+    UnterminatedString,
 } || std.mem.Allocator.Error;
 
 /// Lexer pass, pre-generates all tokens into a queue and feeds them back. It is not
@@ -115,6 +117,8 @@ pub const Lexer = struct {
             try self.tokenizeNumber();
         } else if (isIdentifier(next)) {
             try self.tokenizeIdentifier();
+        } else if (next == '\"') {
+            try self.tokenizeString();
         } else {
             try self.tokenizeSpecial();
         }
@@ -147,6 +151,27 @@ pub const Lexer = struct {
         const end = self.index;
         const tag = if (keyword_lookup.get(self.source[start..end])) |keyword| keyword else TokenTag.identifier;
         try self.pushToken(Token{ .tag = tag, .start = start, .end = end });
+    }
+
+    fn tokenizeString(self: *Lexer) Error!void {
+        const start_char = self.nextChar().?;
+        std.debug.assert(start_char == '\"');
+
+        const start = self.index;
+        while (self.peekChar()) |c| {
+            _ = self.nextChar();
+            if (c == '\"') {
+                break;
+            }
+        }
+        const end = self.index;
+
+        if (end >= self.source.len - 1) {
+            try self.err_ctx.newError(.unterminated_string, "Unterminated string literal", .{}, start - 1);
+            return Error.UnexpectedCharacter;
+        }
+
+        try self.pushToken(Token{ .tag = .string_literal, .start = start, .end = end - 1 });
     }
 
     fn tokenizeSpecial(self: *Lexer) Error!void {

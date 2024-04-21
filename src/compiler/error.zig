@@ -5,6 +5,7 @@ pub const ErrorTag = enum(u16) {
     unexpected_character,
     unexpected_token,
     unexpected_end,
+    unterminated_string,
     unterminated_block,
     symbol_not_found,
     symbol_shadowing,
