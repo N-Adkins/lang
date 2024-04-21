@@ -195,6 +195,11 @@ pub const Pass = struct {
                 var ret = self.stack_stack.pop(self.allocator);
                 ret.?.deinit();
             },
+            .builtin_call => |*call| {
+                for (call.args) |arg| {
+                    try self.populateNode(arg);
+                }
+            },
             .var_decl => |*var_decl| {
                 var stack = self.stack_stack.peek().?;
                 if (stack.find(var_decl.symbol.name)) |_| {

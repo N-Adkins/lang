@@ -13,10 +13,11 @@ pub const Opcode = enum(u8) {
     DIV, // pops 2 values off of stack, pushes result after dividing them
     CALL, // u8 arg count
     RETURN, // u8 1 if there is a return value, 0 if not
-    //CALL_BUILTIN, // u8 builtin function number
+    CALL_BUILTIN, // u8 builtin function number
 };
 
 pub fn dumpBytecode(funcs: [][]const u8) void {
+    std.debug.print("--------------- DUMP ---------------\n", .{});
     for (0..funcs.len) |func_num| {
         const bytes = funcs[func_num];
         std.debug.print("Func #{d}:\n", .{func_num});
@@ -62,11 +63,12 @@ pub fn dumpBytecode(funcs: [][]const u8) void {
                     std.debug.print("0x{X:0>2}\n", .{bytes[i]});
                     i += 1;
                 },
-                //.CALL_BUILTIN => {
-                //   std.debug.print("0x{X:0>2}\n", .{bytes[i]});
-                //  i += 1;
-                //}
+                .CALL_BUILTIN => {
+                    std.debug.print("0x{X:0>2}\n", .{bytes[i]});
+                    i += 1;
+                },
             }
         }
     }
+    std.debug.print("------------------------------------\n", .{});
 }

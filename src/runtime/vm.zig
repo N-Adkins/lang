@@ -55,11 +55,11 @@ pub const VM = struct {
         while (self.pc < self.bytes[self.current_func].len) {
             try self.nextInstr();
         }
-        self.garbage_collector.run(self.eval_stack.items[0..self.eval_stack.head]);
         while (self.eval_stack.head > 0) {
-            const item = try self.eval_stack.pop();
-            std.debug.print("{any}\n", .{item});
+            _ = try self.eval_stack.pop();
+            //std.debug.print("{any}\n", .{item});
         }
+        self.garbage_collector.run(self.eval_stack.items[0..self.eval_stack.head]);
     }
 
     /// Executes the next instruction
@@ -76,6 +76,7 @@ pub const VM = struct {
             .DIV => try self.opDiv(),
             .CALL => try self.opCall(),
             .RETURN => try self.opReturn(),
+            .CALL_BUILTIN => try self.opCallBuiltin(),
         }
     }
 
@@ -185,6 +186,32 @@ pub const VM = struct {
         } else {
             try self.eval_stack.popFrame(call_frame.stack_offset);
         }
+    }
+
+    fn opCallBuiltin(self: *VM) Error!void {
+        const idx = try self.nextByte();
+        switch (idx) {
+            0 => try self.builtinPrint(),
+            1 => try self.builtinToString(),
+            else => unreachable,
+        }
+    }
+
+    fn builtinPrint(self: *VM) Error!void {
+        const item = try self.eval_stack.pop();
+        std.debug.print("{any}\n", .{item});
+    }
+
+    fn builtinToString(self: *VM) Error!void {
+        const item = try self.eval_stack.pop();
+        const raw = try std.fmt.allocPrint(self.allocator, "{any}", .{item});
+        const object = try self.garbage_collector.newObject();
+        object.data = .{
+            .string = .{
+                .raw = raw,
+            },
+        };
+        try self.eval_stack.push(value.Value{ .data = .{ .object = object } });
     }
 
     /// Fetches the next byte and errors if there isn't one

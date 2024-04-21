@@ -2,6 +2,7 @@
 
 const std = @import("std");
 const ast = @import("ast.zig");
+const builtin = @import("builtin.zig");
 const err = @import("error.zig");
 const lexer = @import("lexer.zig");
 const types = @import("types.zig");
@@ -67,8 +68,8 @@ pub const Parser = struct {
             .identifier => {
                 const name = try self.expectToken(.identifier);
                 const raw_name = self.lexer.source[name.start..name.end];
-                if (types.builtin_lookup.get(raw_name)) |builtin| {
-                    return builtin;
+                if (types.builtin_lookup.get(raw_name)) |builtin_type| {
+                    return builtin_type;
                 }
                 try self.err_ctx.errorFromToken(.unexpected_end, "Failed to parse type \"{s}\"", .{raw_name}, name);
                 return Error.UnexpectedToken;
@@ -184,7 +185,12 @@ pub const Parser = struct {
     fn parseBasicExpression(self: *Parser) Error!*ast.Node {
         const expression = switch (self.previous.?.tag) {
             .l_paren => try self.parseParen(),
-            .identifier => try self.parseVarGet(),
+            .identifier => blk: {
+                if (builtin.lookup.has(self.lexer.source[self.previous.?.start..self.previous.?.end])) {
+                    break :blk try self.parseBuiltin();
+                }
+                break :blk try self.parseVarGet();
+            },
             .number => try self.parseNumberConstant(),
             .string_literal => try self.parseStringConstant(),
             .keyword_fn => try self.parseFunctionDecl(),
@@ -238,6 +244,45 @@ pub const Parser = struct {
         const expr = try self.parseExpression();
         _ = try self.expectToken(.r_paren);
         return expr;
+    }
+
+    fn parseBuiltin(self: *Parser) Error!*ast.Node {
+        const identifier = try self.expectToken(.identifier);
+        const idx: u8 = @truncate(builtin.lookup.getIndex(self.lexer.source[identifier.start..identifier.end]).?);
+        const data: builtin.Data = builtin.lookup.kvs[idx].value;
+
+        _ = try self.expectToken(.l_paren);
+
+        const args = try self.allocator.alloc(*ast.Node, data.arg_count);
+        errdefer {
+            for (args) |arg| {
+                arg.deinit(self.allocator);
+                self.allocator.destroy(arg);
+            }
+            self.allocator.free(args);
+        }
+
+        for (0..data.arg_count) |i| {
+            args[i] = try self.parseExpression();
+            if (i < data.arg_count - 1) {
+                _ = try self.expectToken(.comma);
+            }
+        }
+
+        _ = try self.expectToken(.r_paren);
+
+        const node = try self.allocator.create(ast.Node);
+        node.* = .{
+            .index = identifier.start,
+            .data = .{
+                .builtin_call = .{
+                    .idx = idx,
+                    .args = args,
+                },
+            },
+        };
+
+        return node;
     }
 
     fn parseVarGet(self: *Parser) Error!*ast.Node {

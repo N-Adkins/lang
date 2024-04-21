@@ -1,9 +1,7 @@
 var test := 1238;
 
-var test_func := fn (i: number, j: number) -> number {
-    return i - j / 72;
+var gen_str := fn () -> string {
+    return "Test string";
 };
 
-"TEST";
-
-test_func = test_func;
+print(37812712);

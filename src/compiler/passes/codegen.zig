@@ -133,6 +133,13 @@ pub const Pass = struct {
                     },
                 });
             },
+            .builtin_call => |*call| {
+                for (call.args) |arg| {
+                    try self.genNode(arg);
+                }
+                try self.pushOp(.CALL_BUILTIN);
+                try self.pushByte(call.idx);
+            },
             .block => |*block| {
                 for (block.list.items) |statement| {
                     try self.genNode(statement);

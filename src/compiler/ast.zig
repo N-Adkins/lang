@@ -48,6 +48,7 @@ pub const Node = struct {
         unary_op: UnaryOp,
         binary_op: BinaryOp,
         function_decl: FunctionDecl,
+        builtin_call: BuiltinCall,
         block: Block,
         var_decl: VarDecl,
         var_assign: VarAssign,
@@ -120,6 +121,19 @@ pub const Node = struct {
             self.ret_type.deinit(allocator);
             self.body.deinit(allocator);
             allocator.destroy(self.body);
+        }
+    };
+
+    const BuiltinCall = struct {
+        idx: u8,
+        args: []*Node,
+
+        pub fn deinit(self: *BuiltinCall, allocator: std.mem.Allocator) void {
+            for (self.args) |arg| {
+                arg.deinit(allocator);
+                allocator.destroy(arg);
+            }
+            allocator.free(self.args);
         }
     };
 

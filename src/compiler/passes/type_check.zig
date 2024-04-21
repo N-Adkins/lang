@@ -6,6 +6,7 @@
 
 const std = @import("std");
 const ast = @import("../ast.zig");
+const builtin = @import("../builtin.zig");
 const err = @import("../error.zig");
 const types = @import("../types.zig");
 
@@ -145,6 +146,14 @@ pub const Pass = struct {
                 _ = self.func_stack.pop(self.allocator);
 
                 return func_type;
+            },
+            .builtin_call => |*call| {
+                const data: builtin.Data = builtin.lookup.kvs[call.idx].value;
+                for (call.args) |arg| {
+                    var arg_type = try self.typeCheck(arg);
+                    arg_type.deinit(self.allocator);
+                }
+                return try data.ret_type.dupe(self.allocator);
             },
             .var_decl => |*var_decl| {
                 if (var_decl.symbol.decl_type) |*decl_type| {

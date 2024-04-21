@@ -26,9 +26,14 @@ pub const Value = struct {
         _ = options;
 
         switch (self.data) {
-            .number => |number| try writer.print("[Number {d}]", .{number}),
+            .number => |number| try writer.print("{d}", .{number}),
             .func => |func| try writer.print("[Function {d}]", .{func}),
-            .object => |_| try writer.print("[Object object]", .{}),
+            .object => |obj| {
+                switch (obj.data) {
+                    .string => |str| try writer.print("{s}", .{str.raw}),
+                    // else => try writer.print("[Object object]", .{}),
+                }
+            },
         }
     }
 
