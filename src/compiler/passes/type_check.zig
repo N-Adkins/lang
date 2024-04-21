@@ -87,6 +87,7 @@ pub const Pass = struct {
     fn typeCheck(self: *Pass, node: *ast.Node) Error!types.Type {
         switch (node.data) {
             .number_constant => return .number,
+            .boolean_constant => return .boolean,
             .string_constant => return .string,
             .var_get => |_| return try node.symbol_decl.?.decl_type.?.dupe(self.allocator),
             .block => |*block| {

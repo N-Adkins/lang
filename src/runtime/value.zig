@@ -6,6 +6,7 @@ const std = @import("std");
 pub const Value = struct {
     data: union(enum) {
         number: f64,
+        boolean: bool,
         func: usize, // func table index
         object: *Object,
     },
@@ -27,6 +28,7 @@ pub const Value = struct {
 
         switch (self.data) {
             .number => |number| try writer.print("{d}", .{number}),
+            .boolean => |boolean| try writer.print("{}", .{boolean}),
             .func => |func| try writer.print("[Function {d}]", .{func}),
             .object => |obj| {
                 switch (obj.data) {

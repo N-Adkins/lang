@@ -43,6 +43,7 @@ pub const Node = struct {
     index: usize,
     data: union(enum) {
         number_constant: NumberConstant,
+        boolean_constant: BooleanConstant,
         string_constant: StringConstant,
         var_get: VarGet,
         unary_op: UnaryOp,
@@ -57,6 +58,10 @@ pub const Node = struct {
 
     const NumberConstant = struct {
         value: f64,
+    };
+
+    const BooleanConstant = struct {
+        value: bool,
     };
 
     const StringConstant = struct {

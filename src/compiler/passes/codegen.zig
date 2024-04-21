@@ -85,6 +85,9 @@ pub const Pass = struct {
             .number_constant => |*num| {
                 try self.pushConstant(value.Value{ .data = .{ .number = num.value } });
             },
+            .boolean_constant => |*boolean| {
+                try self.pushConstant(value.Value{ .data = .{ .boolean = boolean.value } });
+            },
             .string_constant => |*str| {
                 const object = try self.allocator.create(value.Object);
                 object.data = .{

@@ -64,6 +64,7 @@ pub const GC = struct {
         _ = self;
         switch (item.data) {
             .number => |_| {},
+            .boolean => |_| {},
             .func => |_| {},
             .object => |obj| {
                 obj.marked = true;

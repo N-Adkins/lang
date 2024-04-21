@@ -161,6 +161,7 @@ pub const Pass = struct {
 
         switch (node.data) {
             .number_constant => {},
+            .boolean_constant => {},
             .string_constant => {},
             .var_get => |_| {},
             .block => |*block| {

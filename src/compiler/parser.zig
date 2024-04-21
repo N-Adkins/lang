@@ -194,6 +194,7 @@ pub const Parser = struct {
             .number => try self.parseNumberConstant(),
             .string_literal => try self.parseStringConstant(),
             .keyword_fn => try self.parseFunctionDecl(),
+            .keyword_true, .keyword_false => try self.parseBoolean(),
             else => {
                 try self.err_ctx.errorFromToken(.unexpected_token, "Expected expression, found [{s},\"{s}\"]", .{ @tagName(self.previous.?.tag), self.lexer.source[self.previous.?.start..self.previous.?.end] }, self.previous.?);
                 return Error.UnexpectedToken;
@@ -381,6 +382,24 @@ pub const Parser = struct {
                     .args = args,
                     .ret_type = ret_type,
                     .body = body,
+                },
+            },
+        };
+
+        return node;
+    }
+
+    fn parseBoolean(self: *Parser) Error!*ast.Node {
+        const token = try self.expectToken(null);
+
+        const value = if (token.tag == .keyword_true) true else if (token.tag == .keyword_false) false else unreachable;
+
+        const node = try self.allocator.create(ast.Node);
+        node.* = .{
+            .index = token.start,
+            .data = .{
+                .boolean_constant = .{
+                    .value = value,
                 },
             },
         };

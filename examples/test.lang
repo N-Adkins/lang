@@ -1,8 +1,5 @@
-var func_generator := fn () -> fn () -> void {
-    return fn () -> void {
-        print("idk");
-        return;
-    };
-};
+var thing: bool = false;
+var other: bool = true;
 
-func_generator()();
+print(thing);
+print(other);
