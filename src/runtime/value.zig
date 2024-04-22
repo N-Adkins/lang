@@ -51,6 +51,16 @@ pub const Value = struct {
 
         return new;
     }
+
+    /// Assumes both are the same type
+    pub fn equals(self: *const Value, rhs: Value) bool {
+        switch (self.data) {
+            .number => |num| return num == rhs.data.number,
+            .boolean => |boolean| return boolean == rhs.data.boolean,
+            .func => |func| return func == rhs.data.func,
+            .object => |obj| return obj.equals(rhs.data.object),
+        }
+    }
 };
 
 pub const Object = struct {
@@ -83,6 +93,13 @@ pub const Object = struct {
         }
 
         return new;
+    }
+
+    /// Assumes same types
+    pub fn equals(self: *const Object, rhs: *const Object) bool {
+        switch (self.data) {
+            .string => |str| return std.mem.eql(u8, str.raw, rhs.data.string.raw),
+        }
     }
 };
 

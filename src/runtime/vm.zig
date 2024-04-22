@@ -77,6 +77,11 @@ pub const VM = struct {
             .CALL => try self.opCall(),
             .RETURN => try self.opReturn(),
             .CALL_BUILTIN => try self.opCallBuiltin(),
+            .NEGATE => try self.opNegate(),
+            .EQUAL => try self.opEqual(),
+            .AND => try self.opAnd(),
+            .OR => try self.opOr(),
+            .JUMP => try self.opJump(),
         }
     }
 
@@ -195,6 +200,34 @@ pub const VM = struct {
             1 => try self.builtinToString(),
             else => unreachable,
         }
+    }
+
+    fn opNegate(self: *VM) Error!void {
+        const item = try self.eval_stack.pop();
+        try self.eval_stack.push(value.Value{ .data = .{ .boolean = !item.data.boolean } });
+    }
+
+    fn opEqual(self: *VM) Error!void {
+        const lhs = try self.eval_stack.pop();
+        const rhs = try self.eval_stack.pop();
+        try self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.equals(rhs) } });
+    }
+
+    fn opAnd(self: *VM) Error!void {
+        const lhs = try self.eval_stack.pop();
+        const rhs = try self.eval_stack.pop();
+        try self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.boolean and rhs.data.boolean } });
+    }
+
+    fn opOr(self: *VM) Error!void {
+        const lhs = try self.eval_stack.pop();
+        const rhs = try self.eval_stack.pop();
+        try self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.boolean or rhs.data.boolean } });
+    }
+
+    fn opJump(self: *VM) Error!void {
+        const offset = try self.nextByte();
+        self.pc += offset;
     }
 
     fn builtinPrint(self: *VM) Error!void {

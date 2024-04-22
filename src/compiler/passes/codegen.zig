@@ -90,6 +90,16 @@ pub const Pass = struct {
                     .sub => .SUB,
                     .mul => .MUL,
                     .div => .DIV,
+                    .boolean_and => .AND,
+                    .boolean_or => .OR,
+                    .equals => .EQUAL,
+                    .not_equals => {
+                        try self.genNode(binary.lhs);
+                        try self.genNode(binary.rhs);
+                        try self.pushOp(.EQUAL);
+                        try self.pushOp(.NEGATE);
+                        return;
+                    },
                     else => unreachable,
                 };
                 try self.genNode(binary.lhs);

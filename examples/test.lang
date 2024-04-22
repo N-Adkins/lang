@@ -1,7 +1,1 @@
-var func := fn() -> fn() -> number {
-    return fn () -> number {
-        return 3128;
-    };
-};
-
-print(func()());
+print("Test" == 281);

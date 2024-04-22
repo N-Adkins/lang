@@ -14,6 +14,11 @@ pub const Opcode = enum(u8) {
     CALL, // u8 arg count
     RETURN, // u8 1 if there is a return value, 0 if not
     CALL_BUILTIN, // u8 builtin function number
+    NEGATE, // pops 1 value off of stack, assumes boolean, negates and pushes result
+    EQUAL, // pops 2 values off of stack, pushes boolean result after comparing
+    AND, // pops 2 values off of stack, assumes boolean, pushes boolean after comparing
+    OR, // pops 2 values off of stack, assumes boolean, pushes boolean after comparing
+    JUMP, // u8 offset
 };
 
 pub fn dumpBytecode(funcs: [][]const u8) void {
@@ -64,6 +69,22 @@ pub fn dumpBytecode(funcs: [][]const u8) void {
                     i += 1;
                 },
                 .CALL_BUILTIN => {
+                    std.debug.print("0x{X:0>2}\n", .{bytes[i]});
+                    i += 1;
+                },
+                .NEGATE => {
+                    std.debug.print("\n", .{});
+                },
+                .EQUAL => {
+                    std.debug.print("\n", .{});
+                },
+                .AND => {
+                    std.debug.print("\n", .{});
+                },
+                .OR => {
+                    std.debug.print("\n", .{});
+                },
+                .JUMP => {
                     std.debug.print("0x{X:0>2}\n", .{bytes[i]});
                     i += 1;
                 },

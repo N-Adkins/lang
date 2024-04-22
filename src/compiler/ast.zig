@@ -8,10 +8,10 @@ pub const Operator = union(enum) {
     sub,
     mul,
     div,
-    bool_not_equal,
-    bool_equal,
-    bool_or,
-    bool_and,
+    equals,
+    not_equals,
+    boolean_or,
+    boolean_and,
     call: struct { args: std.ArrayListUnmanaged(*Node) },
 };
 

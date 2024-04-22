@@ -82,11 +82,23 @@ pub const Pass = struct {
             .binary_op => |*binary| {
                 const lhs_type = try self.typeCheck(binary.lhs);
                 const rhs_type = try self.typeCheck(binary.rhs);
-                if (!lhs_type.equal(&rhs_type)) {
-                    try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in right hand of binary expression, found type \"{any}\"", .{ lhs_type, rhs_type }, binary.rhs.index);
-                    return Error.MismatchedTypes;
+                switch (binary.op) {
+                    .boolean_and, .boolean_or => {
+                        const bool_type: types.Type = .boolean;
+                        if (!lhs_type.equal(&bool_type) != !rhs_type.equal(&bool_type)) {
+                            try self.err_ctx.newError(.mismatched_types, "Expected boolean type on both sides of boolean statement, found types \"{any}\" and \"{any}\"", .{ lhs_type, rhs_type }, binary.lhs.index);
+                            return Error.MismatchedTypes;
+                        }
+                        return .boolean;
+                    },
+                    else => {
+                        if (!lhs_type.equal(&rhs_type)) {
+                            try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in right hand of binary expression, found type \"{any}\"", .{ lhs_type, rhs_type }, binary.rhs.index);
+                            return Error.MismatchedTypes;
+                        }
+                        return lhs_type;
+                    },
                 }
-                return lhs_type;
             },
             .unary_op => |_| return try self.checkUnary(node),
             .function_decl => |*func_decl| {

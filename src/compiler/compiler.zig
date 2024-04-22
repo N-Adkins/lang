@@ -24,6 +24,7 @@ pub const CompileResult = struct {
             switch (constant.data) {
                 .object => |obj| {
                     obj.deinit(allocator);
+                    allocator.destroy(obj);
                 },
                 else => {},
             }

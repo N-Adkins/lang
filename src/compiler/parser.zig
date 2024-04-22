@@ -121,6 +121,10 @@ pub const Parser = struct {
                 .star => ast.Operator.mul,
                 .slash => ast.Operator.div,
                 .l_paren => ast.Operator{ .call = undefined },
+                .equals_equals => ast.Operator.equals,
+                .bang_equals => ast.Operator.not_equals,
+                .keyword_and => ast.Operator.boolean_and,
+                .keyword_or => ast.Operator.boolean_or,
                 else => break,
             };
 
@@ -557,15 +561,17 @@ pub const Parser = struct {
 
     fn infixPrecedence(op: ast.Operator) ?Precedence {
         return switch (op) {
-            .add, .sub => .{ .lhs = 1, .rhs = 2 },
-            .mul, .div => .{ .lhs = 3, .rhs = 4 },
+            .add, .sub => .{ .lhs = 10, .rhs = 11 },
+            .mul, .div => .{ .lhs = 12, .rhs = 13 },
+            .equals, .not_equals => .{ .lhs = 5, .rhs = 6 },
+            .boolean_and, .boolean_or => .{ .lhs = 2, .rhs = 3 },
             else => null,
         };
     }
 
     fn postfixPrecedence(op: ast.Operator) ?Precedence {
         return switch (op) {
-            .call => .{ .lhs = 7, .rhs = 0 },
+            .call => .{ .lhs = 20, .rhs = 0 },
             else => null,
         };
     }

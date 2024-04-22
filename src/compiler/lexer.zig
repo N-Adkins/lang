@@ -17,6 +17,8 @@ pub const TokenTag = enum {
     colon,
     colon_equals,
     right_arrow,
+    bang,
+    bang_equals,
     minus,
     minus_minus,
     minus_equals,
@@ -39,6 +41,8 @@ pub const TokenTag = enum {
     keyword_return,
     keyword_true,
     keyword_false,
+    keyword_and,
+    keyword_or,
 };
 
 /// Used when parsing identifiers
@@ -49,6 +53,8 @@ const keyword_lookup = std.ComptimeStringMap(TokenTag, .{
     .{ "return", TokenTag.keyword_return },
     .{ "false", TokenTag.keyword_false },
     .{ "true", TokenTag.keyword_true },
+    .{ "and", TokenTag.keyword_and },
+    .{ "or", TokenTag.keyword_or },
 });
 
 pub const Token = struct {
@@ -184,6 +190,15 @@ pub const Lexer = struct {
             '}' => tag = .r_curly,
             ',' => tag = .comma,
             '.' => tag = .period,
+            '!' => if (self.peekChar()) |c| {
+                switch (c) {
+                    '=' => {
+                        _ = self.nextChar();
+                        tag = .bang_equals;
+                    },
+                    else => tag = .bang,
+                }
+            },
             '+' => if (self.peekChar()) |c| {
                 switch (c) {
                     '+' => {
