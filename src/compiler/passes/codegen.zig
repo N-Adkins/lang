@@ -1,5 +1,4 @@
 //! Code Generation Pass, converts AST into bytecode and a constant table.
-
 const std = @import("std");
 const ast = @import("../ast.zig");
 const byte = @import("../../runtime/bytecode.zig");

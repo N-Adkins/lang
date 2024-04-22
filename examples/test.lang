@@ -1,5 +1,7 @@
-var thing: bool = false;
-var other: bool = true;
+var func := fn() -> fn() -> string {
+    return fn () -> string {
+        return "Test";
+    };
+};
 
-print(thing);
-print(other);
+print(func()());

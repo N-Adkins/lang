@@ -60,7 +60,7 @@ fn runPasses(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, source: [
     defer symbol_populate_pass.deinit();
     try symbol_populate_pass.run();
 
-    var type_check_pass = try type_pass.Pass.init(allocator, err_ctx, &parse.root);
+    var type_check_pass = type_pass.Pass.init(allocator, err_ctx, &parse.root);
     defer type_check_pass.deinit();
     try type_check_pass.run();
 

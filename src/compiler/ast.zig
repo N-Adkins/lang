@@ -8,6 +8,10 @@ pub const Operator = union(enum) {
     sub,
     mul,
     div,
+    bool_not_equal,
+    bool_equal,
+    bool_or,
+    bool_and,
     call: struct { args: std.ArrayListUnmanaged(*Node) },
 
     pub fn deinit(self: *Operator, allocator: std.mem.Allocator) void {

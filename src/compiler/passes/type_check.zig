@@ -22,10 +22,7 @@ const Stack = struct {
     head: ?*Node = null,
 
     pub fn deinit(self: *Stack, allocator: std.mem.Allocator) void {
-        while (self.pop(allocator)) |type_decl| {
-            var deinit_decl = type_decl;
-            deinit_decl.deinit(allocator);
-        }
+        while (self.pop(allocator)) |_| {}
     }
 
     pub fn push(self: *Stack, allocator: std.mem.Allocator, type_decl: types.Type) Error!*types.Type {
@@ -61,19 +58,12 @@ pub const Pass = struct {
     err_ctx: *err.ErrorContext,
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, root: *ast.Node) Error!Pass {
-        var pass = Pass{
+    pub fn init(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, root: *ast.Node) Pass {
+        return Pass{
             .root = root,
             .err_ctx = err_ctx,
             .allocator = allocator,
         };
-
-        // Push main function signature
-        const void_type = try allocator.create(types.Type);
-        void_type.* = .void;
-        _ = try pass.func_stack.push(allocator, types.Type{ .function = .{ .ret = void_type } });
-
-        return pass;
     }
 
     pub fn deinit(self: *Pass) void {
@@ -81,6 +71,8 @@ pub const Pass = struct {
     }
 
     pub fn run(self: *Pass) Error!void {
+        var void_type: types.Type = .void;
+        _ = try self.func_stack.push(self.allocator, types.Type{ .function = .{ .ret = &void_type } });
         _ = try self.typeCheck(self.root);
     }
 
@@ -110,12 +102,6 @@ pub const Pass = struct {
             .unary_op => |_| return try self.checkUnary(node),
             .function_decl => |*func_decl| {
                 var arg_types = std.ArrayListUnmanaged(types.Type){};
-                errdefer {
-                    for (arg_types.items) |*arg_type| {
-                        arg_type.deinit(self.allocator);
-                    }
-                    arg_types.deinit(self.allocator);
-                }
 
                 for (func_decl.args.items) |arg| {
                     try arg_types.append(self.allocator, try arg.decl_type.?.dupe(self.allocator));
@@ -132,17 +118,12 @@ pub const Pass = struct {
                 };
                 errdefer func_type.deinit(self.allocator);
 
-                const dupe = try func_type.dupe(self.allocator);
-
-                _ = try self.func_stack.push(self.allocator, dupe);
+                _ = try self.func_stack.push(self.allocator, func_type);
 
                 var body_type = try self.typeCheck(func_decl.body);
-                defer body_type.deinit(self.allocator);
+                body_type.deinit(self.allocator);
 
-                if (self.func_stack.pop(self.allocator)) |popped| {
-                    var popped_ref = popped;
-                    popped_ref.deinit(self.allocator);
-                }
+                _ = self.func_stack.pop(self.allocator);
 
                 return func_type;
             },
@@ -163,7 +144,8 @@ pub const Pass = struct {
                         return Error.MismatchedTypes;
                     }
                 } else {
-                    const expr_type = try self.typeCheck(var_decl.expr);
+                    var expr_type = try self.typeCheck(var_decl.expr);
+                    errdefer expr_type.deinit(self.allocator);
                     if (expr_type.equal(&.void)) {
                         try self.err_ctx.newError(.mismatched_types, "Void is not a valid inferred variable type", .{}, var_decl.expr.index);
                         return Error.MismatchedTypes;
