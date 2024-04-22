@@ -140,6 +140,30 @@ pub const Pass = struct {
                 }
                 return data.ret_type;
             },
+            .array_init => |*array| {
+                // allow empty array initialization later, it'll be void for now
+                // I'll have to implement a special case disallowing type inference
+                // for empty ones
+                if (array.items.items.len <= 0) {
+                    const void_type = try self.allocator.create(types.Type);
+                    void_type.* = .void;
+                    return types.Type{ .array = .{ .base = void_type } };
+                }
+
+                const array_type = try self.typeCheck(array.items.items[0]);
+                for (array.items.items) |item| {
+                    const item_type = try self.typeCheck(item);
+                    if (!item_type.equal(&array_type)) {
+                        try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in array initialization, found type \"{any}\"", .{ array_type, item_type }, item.index);
+                        return Error.MismatchedTypes;
+                    }
+                }
+
+                const heap_type = try self.allocator.create(types.Type);
+                heap_type.* = array_type;
+
+                return types.Type{ .array = .{ .base = heap_type } };
+            },
             .var_decl => |*var_decl| {
                 if (var_decl.symbol.decl_type) |*decl_type| {
                     var expr_type = try self.typeCheck(var_decl.expr);
@@ -222,6 +246,20 @@ pub const Pass = struct {
                         return Error.MismatchedTypes;
                     },
                 }
+            },
+            .index => |*index| {
+                const array_type: types.Type = .{ .array = undefined };
+                const num_type: types.Type = .number;
+                if (@intFromEnum(expr_type) != @intFromEnum(array_type)) { // don't want deep check
+                    try self.err_ctx.newError(.mismatched_types, "Expected array type on left of indexing, found type {any}", .{expr_type}, node.index);
+                    return Error.MismatchedTypes;
+                }
+                const index_type = try self.typeCheck(index.index);
+                if (!index_type.equal(&num_type)) {
+                    try self.err_ctx.newError(.mismatched_types, "Expected number type as index, found type {any}", .{index_type}, node.index);
+                    return Error.MismatchedTypes;
+                }
+                return expr_type.array.base.*;
             },
             else => unreachable,
         }

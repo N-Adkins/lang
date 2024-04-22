@@ -171,6 +171,10 @@ pub const Pass = struct {
                             try self.populateNode(arg);
                         }
                     },
+                    .index => |*index| {
+                        try self.populateNode(index.index);
+                        try self.populateNode(unary.expr);
+                    },
                     else => unreachable,
                 }
             },
@@ -186,6 +190,11 @@ pub const Pass = struct {
             .builtin_call => |*call| {
                 for (call.args) |arg| {
                     try self.populateNode(arg);
+                }
+            },
+            .array_init => |*array| {
+                for (array.items.items) |item| {
+                    try self.populateNode(item);
                 }
             },
             .var_decl => |*var_decl| {

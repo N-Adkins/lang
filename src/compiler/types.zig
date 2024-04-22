@@ -5,6 +5,7 @@ pub const Type = union(enum) {
     number,
     boolean,
     string,
+    array: struct { base: *Type },
     function: struct { args: std.ArrayListUnmanaged(Type) = std.ArrayListUnmanaged(Type){}, ret: *Type },
 
     pub fn equal(self: *const Type, other: *const Type) bool {
@@ -13,6 +14,12 @@ pub const Type = union(enum) {
         }
 
         switch (self.*) {
+            .array => |base| {
+                switch (other.*) {
+                    .array => |other_base| return base.base.equal(other_base.base),
+                    else => return false,
+                }
+            },
             .function => |self_func| {
                 const other_func = other.function;
                 if (self_func.args.items.len != other_func.args.items.len) {
@@ -40,6 +47,7 @@ pub const Type = union(enum) {
             .boolean => try writer.writeAll("bool"),
             .number => try writer.writeAll("number"),
             .string => try writer.writeAll("string"),
+            .array => |base| try writer.print("[{any}]", base),
             .function => |func| {
                 try writer.writeAll("fn (");
                 for (0..func.args.items.len) |i| {

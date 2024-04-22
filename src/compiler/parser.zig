@@ -57,6 +57,14 @@ pub const Parser = struct {
         }
 
         switch (self.previous.?.tag) {
+            .l_square => {
+                _ = self.nextToken();
+                const inner = try self.parseType();
+                _ = try self.expectToken(.r_square);
+                const heap_inner = try self.allocator.create(types.Type);
+                heap_inner.* = inner;
+                return types.Type{ .array = .{ .base = heap_inner } };
+            },
             .identifier => {
                 const name = try self.expectToken(.identifier);
                 const raw_name = self.lexer.source[name.start..name.end];
@@ -121,6 +129,7 @@ pub const Parser = struct {
                 .star => ast.Operator.mul,
                 .slash => ast.Operator.div,
                 .l_paren => ast.Operator{ .call = undefined },
+                .l_square => ast.Operator{ .index = undefined },
                 .equals_equals => ast.Operator.equals,
                 .bang_equals => ast.Operator.not_equals,
                 .keyword_and => ast.Operator.boolean_and,
@@ -169,6 +178,7 @@ pub const Parser = struct {
     fn parseBasicExpression(self: *Parser) Error!*ast.Node {
         const expression = switch (self.previous.?.tag) {
             .l_paren => try self.parseParen(),
+            .l_square => try self.parseArrayInit(),
             .identifier => blk: {
                 if (builtin.lookup.has(self.lexer.source[self.previous.?.start..self.previous.?.end])) {
                     break :blk try self.parseBuiltin();
@@ -212,6 +222,19 @@ pub const Parser = struct {
                     .expr = expr,
                 } };
             },
+            .index => |_| {
+                node.data = .{
+                    .unary_op = .{
+                        .op = .{
+                            .index = .{
+                                .index = try self.parseExpression(),
+                            },
+                        },
+                        .expr = expr,
+                    },
+                };
+                _ = try self.expectToken(.r_square);
+            },
             else => unreachable,
         }
         return node;
@@ -222,6 +245,34 @@ pub const Parser = struct {
         const expr = try self.parseExpression();
         _ = try self.expectToken(.r_paren);
         return expr;
+    }
+
+    fn parseArrayInit(self: *Parser) Error!*ast.Node {
+        const start = try self.expectToken(.l_square);
+
+        var items = std.ArrayListUnmanaged(*ast.Node){};
+
+        while (self.previous != null and self.previous.?.tag != .r_square) {
+            const expr = try self.parseExpression();
+            try items.append(self.allocator, expr);
+            if (self.previous != null and self.previous.?.tag == .comma) {
+                _ = self.nextToken();
+            }
+        }
+
+        _ = try self.expectToken(.r_square);
+
+        const node = try self.allocator.create(ast.Node);
+        node.* = .{
+            .index = start.start,
+            .data = .{
+                .array_init = .{
+                    .items = items,
+                },
+            },
+        };
+
+        return node;
     }
 
     fn parseBuiltin(self: *Parser) Error!*ast.Node {
@@ -600,6 +651,7 @@ pub const Parser = struct {
     fn postfixPrecedence(op: ast.Operator) ?Precedence {
         return switch (op) {
             .call => .{ .lhs = 20, .rhs = 0 },
+            .index => .{ .lhs = 20, .rhs = 0 },
             else => null,
         };
     }

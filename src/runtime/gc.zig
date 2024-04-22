@@ -14,8 +14,9 @@ pub const GC = struct {
     pub fn deinit(self: *GC) void {
         var iter = self.record_list;
         while (iter) |obj| {
-            obj.deinit(self.allocator);
             iter = obj.next;
+            obj.deinit(self.allocator);
+            self.allocator.destroy(obj);
         }
     }
 
@@ -41,7 +42,6 @@ pub const GC = struct {
         var iter = self.record_list;
         var prev: ?*value.Object = null;
         while (iter) |obj| {
-            prev = obj;
             iter = obj.next;
             if (!obj.marked) {
                 if (prev) |prev_ptr| {
@@ -56,6 +56,7 @@ pub const GC = struct {
             } else {
                 // Unmark marked objects but leave them
                 obj.marked = false;
+                prev = obj;
             }
         }
     }

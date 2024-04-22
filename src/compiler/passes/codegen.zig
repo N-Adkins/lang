@@ -116,6 +116,11 @@ pub const Pass = struct {
                         try self.pushOp(.CALL);
                         try self.pushByte(@truncate(call.args.items.len));
                     },
+                    .index => |index| {
+                        try self.genNode(index.index);
+                        try self.genNode(unary.expr);
+                        try self.pushOp(.ARRAY_GET);
+                    },
                     else => unreachable,
                 }
             },
@@ -133,6 +138,16 @@ pub const Pass = struct {
                 }
                 try self.pushOp(.CALL_BUILTIN);
                 try self.pushByte(call.idx);
+            },
+            .array_init => |*array| {
+                // in reverse so they're popped off in order
+                var i: usize = array.items.items.len;
+                while (i > 0) {
+                    i -= 1;
+                    try self.genNode(array.items.items[i]);
+                }
+                try self.pushOp(.ARRAY_INIT);
+                try self.pushByte(@truncate(array.items.items.len));
             },
             .block => |*block| {
                 for (block.list.items) |statement| {

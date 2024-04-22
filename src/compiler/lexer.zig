@@ -11,6 +11,8 @@ pub const TokenTag = enum {
     r_paren,
     l_curly,
     r_curly,
+    l_square,
+    r_square,
     comma,
     period,
     semicolon,
@@ -190,6 +192,8 @@ pub const Lexer = struct {
             ')' => tag = .r_paren,
             '{' => tag = .l_curly,
             '}' => tag = .r_curly,
+            '[' => tag = .l_square,
+            ']' => tag = .r_square,
             ',' => tag = .comma,
             '.' => tag = .period,
             '!' => if (self.peekChar()) |c| {

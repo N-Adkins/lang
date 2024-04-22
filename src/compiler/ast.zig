@@ -12,7 +12,12 @@ pub const Operator = union(enum) {
     not_equals,
     boolean_or,
     boolean_and,
-    call: struct { args: std.ArrayListUnmanaged(*Node) },
+    call: struct {
+        args: std.ArrayListUnmanaged(*Node),
+    },
+    index: struct {
+        index: *Node,
+    },
 };
 
 pub const SymbolDecl = struct {
@@ -34,6 +39,7 @@ pub const Node = struct {
         binary_op: BinaryOp,
         function_decl: FunctionDecl,
         builtin_call: BuiltinCall,
+        array_init: ArrayInit,
         block: Block,
         var_decl: VarDecl,
         var_assign: VarAssign,
@@ -77,6 +83,10 @@ pub const Node = struct {
     const BuiltinCall = struct {
         idx: u8,
         args: []*Node,
+    };
+
+    const ArrayInit = struct {
+        items: std.ArrayListUnmanaged(*Node),
     };
 
     const Block = struct {

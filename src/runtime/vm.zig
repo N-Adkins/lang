@@ -11,6 +11,7 @@ pub const Error = error{
     MalformedInstruction,
     InvalidConstant,
     InvalidCallFrame,
+    ArrayOutOfBounds,
 } || stack.Error;
 
 /// Used in call stack to maintain function calls
@@ -48,6 +49,7 @@ pub const VM = struct {
     pub fn deinit(self: *VM) void {
         self.eval_stack.deinit(self.allocator);
         self.call_stack.deinit(self.allocator);
+        self.garbage_collector.deinit();
     }
 
     /// Runs VM
@@ -83,6 +85,10 @@ pub const VM = struct {
             .OR => try self.opOr(),
             .BRANCH_NEQ => try self.opBranchNEQ(),
             .JUMP => try self.opJump(),
+            .ARRAY_INIT => try self.opArrayInit(),
+            .ARRAY_PUSH => try self.opArrayPush(),
+            .ARRAY_GET => try self.opArrayGet(),
+            .ARRAY_SET => try self.opArraySet(),
         }
     }
 
@@ -237,6 +243,53 @@ pub const VM = struct {
     fn opJump(self: *VM) Error!void {
         const offset = try self.nextByte();
         self.pc += offset;
+    }
+
+    fn opArrayInit(self: *VM) Error!void {
+        const items = try self.nextByte();
+        var array = try std.ArrayListUnmanaged(value.Value).initCapacity(self.allocator, @intCast(items));
+        for (0..items) |_| {
+            try array.append(self.allocator, try self.eval_stack.pop());
+        }
+        const obj = try self.garbage_collector.newObject();
+        obj.* = .{
+            .data = .{
+                .array = .{
+                    .items = array,
+                },
+            },
+        };
+        try self.eval_stack.push(value.Value{ .data = .{ .object = obj } });
+    }
+
+    fn opArrayPush(self: *VM) Error!void {
+        const array_obj = try self.eval_stack.pop();
+        var array = &array_obj.data.object.data.array.items;
+        const item = try self.eval_stack.pop();
+        try array.append(self.allocator, item);
+    }
+
+    fn opArrayGet(self: *VM) Error!void {
+        const array_obj = try self.eval_stack.pop();
+        const array = &array_obj.data.object.data.array.items;
+        const index_value = try self.eval_stack.pop();
+        const index: usize = @intFromFloat(@trunc(index_value.data.number));
+        if (array.items.len <= index) {
+            return Error.ArrayOutOfBounds;
+        }
+        try self.eval_stack.push(array.items[index]);
+    }
+
+    fn opArraySet(self: *VM) Error!void {
+        const array_obj = try self.eval_stack.pop();
+        var array = &array_obj.data.object.data.array.items;
+        const index_value = try self.eval_stack.pop();
+        const index: usize = @intFromFloat(@trunc(index_value.data.number));
+        const item = try self.eval_stack.pop();
+        if (array.items.len <= index) {
+            return Error.ArrayOutOfBounds;
+        }
+        array.items[index] = item;
     }
 
     fn builtinPrint(self: *VM) Error!void {
