@@ -76,7 +76,8 @@ pub const Node = struct {
     };
 
     const FunctionDecl = struct {
-        args: std.ArrayListUnmanaged(SymbolDecl),
+        self_arg: bool = false,
+        args: std.ArrayListUnmanaged(SymbolDecl) = std.ArrayListUnmanaged(SymbolDecl){},
         ret_type: types.Type,
         body: *Node,
     };
@@ -87,11 +88,11 @@ pub const Node = struct {
     };
 
     const ArrayInit = struct {
-        items: std.ArrayListUnmanaged(*Node),
+        items: std.ArrayListUnmanaged(*Node) = std.ArrayListUnmanaged(*Node){},
     };
 
     const Block = struct {
-        list: std.ArrayListUnmanaged(*Node),
+        list: std.ArrayListUnmanaged(*Node) = std.ArrayListUnmanaged(*Node){},
     };
 
     const VarDecl = struct {

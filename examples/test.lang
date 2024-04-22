@@ -1,11 +1,4 @@
-var random_num := 2381;
-var test := [0, 23, random_num];
-var example := fn (array: [number]) -> number {
+// this is valid now
+var example := fn (self, array: [number]) -> number {
     return array[1];
 };
-
-print(example(test));
-
-test[1] = 83;
-
-print(example(test));

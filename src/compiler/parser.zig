@@ -360,6 +360,22 @@ pub const Parser = struct {
 
         var args = std.ArrayListUnmanaged(ast.SymbolDecl){};
 
+        const self_ref: bool = if (self.previous != null and self.previous.?.tag != .r_paren) blk: {
+            switch (self.previous.?.tag) {
+                .identifier => {
+                    if (std.mem.eql(u8, self.lexer.source[self.previous.?.start..self.previous.?.end], "self")) {
+                        _ = self.nextToken();
+                        if (self.previous != null and self.previous.?.tag == .comma) {
+                            _ = self.nextToken();
+                        }
+                        break :blk true;
+                    }
+                    break :blk false;
+                },
+                else => break :blk false,
+            }
+        } else false;
+
         while (self.previous != null and self.previous.?.tag != .r_paren) {
             const name = try self.expectToken(.identifier);
 
@@ -393,6 +409,7 @@ pub const Parser = struct {
             .index = start.start,
             .data = .{
                 .function_decl = .{
+                    .self_arg = self_ref,
                     .args = args,
                     .ret_type = ret_type,
                     .body = body,
