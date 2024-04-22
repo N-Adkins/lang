@@ -198,6 +198,13 @@ pub const Pass = struct {
                 try self.populateNode(var_decl.expr);
             },
             .var_assign => |*var_assign| try self.populateNode(var_assign.expr),
+            .if_stmt => |*if_stmt| {
+                try self.populateNode(if_stmt.expr);
+                try self.populateNode(if_stmt.true_body);
+                if (if_stmt.false_body) |false_body| {
+                    try self.populateNode(false_body);
+                }
+            },
             .return_stmt => |*ret| {
                 if (ret.expr) |expr| {
                     try self.populateNode(expr);

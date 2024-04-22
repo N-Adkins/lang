@@ -91,6 +91,13 @@ pub const Pass = struct {
                         }
                         return .boolean;
                     },
+                    .equals, .not_equals => {
+                        if (!lhs_type.equal(&rhs_type)) {
+                            try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in right hand of comparison, found type \"{any}\"", .{ lhs_type, rhs_type }, binary.rhs.index);
+                            return Error.MismatchedTypes;
+                        }
+                        return .boolean;
+                    },
                     else => {
                         if (!lhs_type.equal(&rhs_type)) {
                             try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in right hand of binary expression, found type \"{any}\"", .{ lhs_type, rhs_type }, binary.rhs.index);
@@ -156,6 +163,19 @@ pub const Pass = struct {
                 if (!expr_type.equal(ident_type)) {
                     try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in variable declaration expression, found type \"{any}\"", .{ ident_type, expr_type }, var_assign.expr.index);
                     return Error.MismatchedTypes;
+                }
+                return .void;
+            },
+            .if_stmt => |*if_stmt| {
+                const expr_type = try self.typeCheck(if_stmt.expr);
+                const bool_type: types.Type = .boolean;
+                if (!expr_type.equal(&bool_type)) {
+                    try self.err_ctx.newError(.mismatched_types, "Expected boolean type in if statement expresion, found type \"{any}\"", .{expr_type}, node.index);
+                    return Error.MismatchedTypes;
+                }
+                _ = try self.typeCheck(if_stmt.true_body);
+                if (if_stmt.false_body) |false_body| {
+                    _ = try self.typeCheck(false_body);
                 }
                 return .void;
             },

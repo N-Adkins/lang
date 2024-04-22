@@ -392,6 +392,10 @@ pub const Parser = struct {
                 needs_semicolon = false;
                 break :blk try self.parseBlock();
             },
+            .keyword_if => blk: {
+                needs_semicolon = false;
+                break :blk try self.parseIf();
+            },
             .keyword_return => try self.parseReturn(),
             else => try self.parseExpression(),
         };
@@ -498,6 +502,30 @@ pub const Parser = struct {
         };
 
         return block;
+    }
+
+    fn parseIf(self: *Parser) Error!*ast.Node {
+        const if_start = try self.expectToken(.keyword_if);
+        const expr = try self.parseExpression();
+        const true_body = try self.parseBlock();
+        const false_body: ?*ast.Node =
+            if (self.previous != null and self.previous.?.tag == .keyword_else)
+        blk: {
+            _ = self.nextToken();
+            break :blk try self.parseBlock();
+        } else null;
+        const node = try self.allocator.create(ast.Node);
+        node.* = .{
+            .index = if_start.start,
+            .data = .{
+                .if_stmt = .{
+                    .expr = expr,
+                    .true_body = true_body,
+                    .false_body = false_body,
+                },
+            },
+        };
+        return node;
     }
 
     fn parseReturn(self: *Parser) Error!*ast.Node {

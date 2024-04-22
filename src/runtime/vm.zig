@@ -81,6 +81,7 @@ pub const VM = struct {
             .EQUAL => try self.opEqual(),
             .AND => try self.opAnd(),
             .OR => try self.opOr(),
+            .BRANCH_NEQ => try self.opBranchNEQ(),
             .JUMP => try self.opJump(),
         }
     }
@@ -223,6 +224,14 @@ pub const VM = struct {
         const lhs = try self.eval_stack.pop();
         const rhs = try self.eval_stack.pop();
         try self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.boolean or rhs.data.boolean } });
+    }
+
+    fn opBranchNEQ(self: *VM) Error!void {
+        const offset = try self.nextByte();
+        const item = try self.eval_stack.pop();
+        if (!item.data.boolean) {
+            self.pc += offset;
+        }
     }
 
     fn opJump(self: *VM) Error!void {

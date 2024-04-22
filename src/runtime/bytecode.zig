@@ -18,6 +18,7 @@ pub const Opcode = enum(u8) {
     EQUAL, // pops 2 values off of stack, pushes boolean result after comparing
     AND, // pops 2 values off of stack, assumes boolean, pushes boolean after comparing
     OR, // pops 2 values off of stack, assumes boolean, pushes boolean after comparing
+    BRANCH_NEQ, // u8 offset, pops value off of stack, if false then jump to offset, otherwise nothing
     JUMP, // u8 offset
 };
 
@@ -83,6 +84,10 @@ pub fn dumpBytecode(funcs: [][]const u8) void {
                 },
                 .OR => {
                     std.debug.print("\n", .{});
+                },
+                .BRANCH_NEQ => {
+                    std.debug.print("0x{X:0>2}\n", .{bytes[i]});
+                    i += 1;
                 },
                 .JUMP => {
                     std.debug.print("0x{X:0>2}\n", .{bytes[i]});

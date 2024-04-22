@@ -152,6 +152,29 @@ pub const Pass = struct {
                 try self.pushOp(.VAR_SET);
                 try self.pushByte(index);
             },
+            .if_stmt => |*if_stmt| {
+                try self.genNode(if_stmt.expr);
+                try self.pushOp(.BRANCH_NEQ);
+
+                const func = self.func_stack.first.?.data.func;
+                const start = self.bytecode.items[func].code.items.len;
+                try self.pushByte(0); // temp
+
+                try self.genNode(if_stmt.true_body);
+
+                const offset = self.bytecode.items[func].code.items.len - start - 1;
+                self.bytecode.items[func].code.items[start] = @truncate(offset);
+
+                if (if_stmt.false_body) |false_body| {
+                    self.bytecode.items[func].code.items[start] += 2;
+                    try self.pushOp(.JUMP);
+                    const false_start = self.bytecode.items[func].code.items.len;
+                    try self.pushByte(0); // temp
+                    try self.genNode(false_body);
+                    const false_offset = self.bytecode.items[func].code.items.len - false_start - 1;
+                    self.bytecode.items[func].code.items[false_start] = @truncate(false_offset);
+                }
+            },
             .return_stmt => |*ret| {
                 const is_value: u8 = if (ret.expr) |expr| blk: {
                     try self.genNode(expr);

@@ -37,7 +37,8 @@ pub const Node = struct {
         block: Block,
         var_decl: VarDecl,
         var_assign: VarAssign,
-        return_stmt: Return,
+        if_stmt: IfStatement,
+        return_stmt: ReturnStatement,
     },
 
     const NumberConstant = struct {
@@ -92,7 +93,13 @@ pub const Node = struct {
         expr: *Node,
     };
 
-    const Return = struct {
+    const IfStatement = struct {
+        expr: *Node,
+        true_body: *Node,
+        false_body: ?*Node,
+    };
+
+    const ReturnStatement = struct {
         expr: ?*Node,
     };
 };
