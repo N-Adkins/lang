@@ -20,10 +20,6 @@ const FuncFrame = struct {
 
 const ByteFunc = struct {
     code: std.ArrayListUnmanaged(u8) = std.ArrayListUnmanaged(u8){},
-
-    pub fn deinit(self: *ByteFunc, allocator: std.mem.Allocator) void {
-        self.code.deinit(allocator);
-    }
 };
 
 pub const Pass = struct {
@@ -42,20 +38,6 @@ pub const Pass = struct {
             .err_ctx = err_ctx,
             .allocator = allocator,
         };
-    }
-
-    pub fn deinit(self: *Pass) void {
-        while (self.func_stack.first) |_| {
-            self.popFrame();
-        }
-        for (self.bytecode.items) |*func| {
-            func.deinit(self.allocator);
-        }
-        for (self.constants.items) |*constant| {
-            constant.deinit(self.allocator);
-        }
-        self.bytecode.deinit(self.allocator);
-        self.constants.deinit(self.allocator);
     }
 
     pub fn run(self: *Pass) Error!void {
@@ -231,7 +213,6 @@ pub const Pass = struct {
     /// Pops a function frame
     fn popFrame(self: *Pass) void {
         const head = self.func_stack.popFirst().?;
-        head.data.map.deinit(self.allocator);
         self.allocator.destroy(head);
     }
 };

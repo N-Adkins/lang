@@ -58,7 +58,6 @@ const SymbolStack = struct {
         if (self.front) |front| {
             const node = front.symbol;
             self.front = front.next;
-            self.allocator.destroy(front);
             return node;
         }
         return null;
@@ -84,13 +83,6 @@ const Stack = struct {
     };
     head: ?*Node = null,
 
-    pub fn deinit(self: *Stack, allocator: std.mem.Allocator) void {
-        while (self.pop(allocator)) |stack| {
-            var deinit_stack = stack;
-            deinit_stack.deinit();
-        }
-    }
-
     pub fn push(self: *Stack, allocator: std.mem.Allocator, symbol_stack: SymbolStack) Error!*SymbolStack {
         const node = try allocator.create(Node);
         node.data = symbol_stack;
@@ -99,11 +91,10 @@ const Stack = struct {
         return &node.data;
     }
 
-    pub fn pop(self: *Stack, allocator: std.mem.Allocator) ?SymbolStack {
+    pub fn pop(self: *Stack) ?SymbolStack {
         if (self.head) |head| {
             const ret = head.data;
             self.head = head.next;
-            allocator.destroy(head);
             return ret;
         } else {
             return null;
@@ -133,10 +124,6 @@ pub const Pass = struct {
         };
         _ = try pass.stack_stack.push(allocator, SymbolStack{ .allocator = allocator });
         return pass;
-    }
-
-    pub fn deinit(self: *Pass) void {
-        self.stack_stack.deinit(self.allocator);
     }
 
     pub fn run(self: *Pass) Error!void {
@@ -193,7 +180,7 @@ pub const Pass = struct {
                     try stack.push(arg);
                 }
                 try self.populateNode(func_decl.body);
-                var ret = self.stack_stack.pop(self.allocator);
+                var ret = self.stack_stack.pop();
                 ret.?.deinit();
             },
             .builtin_call => |*call| {

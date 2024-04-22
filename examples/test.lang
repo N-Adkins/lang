@@ -1,6 +1,6 @@
-var func := fn() -> fn() -> string {
-    return fn () -> string {
-        return "Test";
+var func := fn() -> fn() -> number {
+    return fn () -> number {
+        return 3128;
     };
 };
 

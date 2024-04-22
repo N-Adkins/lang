@@ -40,20 +40,12 @@ pub const Parser = struct {
         return parser;
     }
 
-    pub fn deinit(self: *Parser) void {
-        self.root.deinit(self.allocator);
-    }
-
     /// Performs all parsing of the tokens held within the passed lexer
     pub fn parse(self: *Parser) Error!void {
         _ = self.nextToken();
         _ = self.nextToken();
         while (self.previous != null) {
             const statement = try self.parseStatement();
-            errdefer {
-                statement.deinit(self.allocator);
-                self.allocator.destroy(statement);
-            }
             try self.root.data.block.list.append(self.allocator, statement);
         }
     }
@@ -79,12 +71,6 @@ pub const Parser = struct {
                 _ = try self.expectToken(.l_paren);
 
                 var arg_types = std.ArrayListUnmanaged(types.Type){};
-                errdefer {
-                    for (arg_types.items) |*arg| {
-                        arg.deinit(self.allocator);
-                    }
-                    arg_types.deinit(self.allocator);
-                }
 
                 while (self.previous != null and self.previous.?.tag != .r_paren) {
                     try arg_types.append(self.allocator, try self.parseType());
@@ -125,10 +111,6 @@ pub const Parser = struct {
     /// Pratt parser function for expressions
     fn parsePrecedenceExpression(self: *Parser, min_precedence: usize) Error!*ast.Node {
         var lhs = try self.parseBasicExpression();
-        errdefer {
-            lhs.deinit(self.allocator);
-            self.allocator.destroy(lhs);
-        }
 
         // binary expressions
         while (self.previous) |prev| {
@@ -156,12 +138,10 @@ pub const Parser = struct {
                 if (precedence.lhs < min_precedence) {
                     break;
                 }
+
                 _ = self.nextToken();
+
                 const rhs = try self.parsePrecedenceExpression(precedence.rhs);
-                errdefer {
-                    rhs.deinit(self.allocator);
-                    self.allocator.destroy(rhs);
-                }
 
                 const node = try self.allocator.create(ast.Node);
                 node.* = .{
@@ -205,22 +185,15 @@ pub const Parser = struct {
 
     fn parsePostfix(self: *Parser, op: ast.Operator, expr: *ast.Node) Error!*ast.Node {
         const node = try self.allocator.create(ast.Node);
-        errdefer self.allocator.destroy(node);
         node.index = expr.index;
+
         switch (op) {
             .call => |_| {
                 var args = std.ArrayListUnmanaged(*ast.Node){};
-                errdefer args.deinit(self.allocator);
 
                 while (self.previous != null and self.previous.?.tag != .r_paren) {
                     const arg = try self.parseExpression();
-                    errdefer {
-                        arg.deinit(self.allocator);
-                        self.allocator.destroy(arg);
-                    }
-
                     try args.append(self.allocator, arg);
-
                     if (self.previous != null and self.previous.?.tag == .comma) {
                         _ = self.nextToken();
                     }
@@ -255,13 +228,6 @@ pub const Parser = struct {
         _ = try self.expectToken(.l_paren);
 
         const args = try self.allocator.alloc(*ast.Node, data.arg_count);
-        errdefer {
-            for (args) |arg| {
-                arg.deinit(self.allocator);
-                self.allocator.destroy(arg);
-            }
-            self.allocator.free(args);
-        }
 
         for (0..data.arg_count) |i| {
             args[i] = try self.parseExpression();
@@ -289,7 +255,7 @@ pub const Parser = struct {
     fn parseVarGet(self: *Parser) Error!*ast.Node {
         const identifier = try self.expectToken(.identifier);
         const expression = try self.allocator.create(ast.Node);
-        errdefer self.allocator.destroy(expression);
+
         expression.* = .{
             .index = identifier.start,
             .data = .{
@@ -338,12 +304,6 @@ pub const Parser = struct {
         _ = try self.expectToken(.l_paren);
 
         var args = std.ArrayListUnmanaged(ast.SymbolDecl){};
-        errdefer {
-            for (args.items) |*arg| {
-                arg.deinit(self.allocator);
-            }
-            args.deinit(self.allocator);
-        }
 
         while (self.previous != null and self.previous.?.tag != .r_paren) {
             const name = try self.expectToken(.identifier);
@@ -351,7 +311,6 @@ pub const Parser = struct {
             _ = try self.expectToken(.colon);
 
             var arg_type = try self.parseType();
-            errdefer arg_type.deinit(self.allocator);
 
             if (arg_type.equal(&.void)) {
                 try self.err_ctx.newError(.unexpected_token, "Void is a not a permitted argument type", .{}, name.end);
@@ -432,10 +391,6 @@ pub const Parser = struct {
             .keyword_return => try self.parseReturn(),
             else => try self.parseExpression(),
         };
-        errdefer {
-            statement.deinit(self.allocator);
-            self.allocator.destroy(statement);
-        }
 
         if (needs_semicolon) {
             _ = try self.expectToken(.semicolon);
@@ -451,7 +406,7 @@ pub const Parser = struct {
 
         const next = try self.expectToken(null);
 
-        var maybe_type_decl: ?types.Type = switch (next.tag) {
+        const maybe_type_decl: ?types.Type = switch (next.tag) {
             .colon => blk: {
                 const decl = try self.parseType();
                 if (decl.equal(&.void)) {
@@ -467,20 +422,9 @@ pub const Parser = struct {
                 return Error.UnexpectedToken;
             },
         };
-        errdefer {
-            if (maybe_type_decl) |*decl| {
-                decl.deinit(self.allocator);
-            }
-        }
 
         const expression = try self.parseExpression();
-        errdefer {
-            expression.deinit(self.allocator);
-            self.allocator.destroy(expression);
-        }
-
         const statement = try self.allocator.create(ast.Node);
-        errdefer self.allocator.destroy(statement);
 
         statement.* = .{ .index = identifier.start, .data = .{
             .var_decl = .{
@@ -491,6 +435,7 @@ pub const Parser = struct {
                 .expr = expression,
             },
         } };
+
         return statement;
     }
 
@@ -500,13 +445,7 @@ pub const Parser = struct {
         _ = try self.expectToken(.equals);
 
         const expression = try self.parseExpression();
-        errdefer {
-            expression.deinit(self.allocator);
-            self.allocator.destroy(expression);
-        }
-
         const statement = try self.allocator.create(ast.Node);
-        errdefer self.allocator.destroy(statement);
 
         statement.* = .{
             .index = identifier.start,
@@ -525,26 +464,13 @@ pub const Parser = struct {
         const start = try self.expectToken(.l_curly);
 
         var body = std.ArrayListUnmanaged(*ast.Node){};
-        errdefer {
-            for (body.items) |node| {
-                node.deinit(self.allocator);
-                self.allocator.destroy(node);
-            }
-            body.deinit(self.allocator);
-        }
 
         const found_end = blk: {
             while (self.previous) |token| {
                 if (token.tag == .r_curly) {
                     break :blk true;
                 }
-
                 const statement = try self.parseStatement();
-                errdefer {
-                    statement.deinit(self.allocator);
-                    self.allocator.destroy(statement);
-                }
-
                 try body.append(self.allocator, statement);
             }
             break :blk false;
@@ -577,12 +503,6 @@ pub const Parser = struct {
                 .semicolon => null,
                 else => try self.parseExpression(),
             };
-            errdefer {
-                if (expr) |expr_ptr| {
-                    expr_ptr.deinit(self.allocator);
-                    self.allocator.destroy(expr_ptr);
-                }
-            }
             const node = try self.allocator.create(ast.Node);
             node.* = .{
                 .index = start.start,

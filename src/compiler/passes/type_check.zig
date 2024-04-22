@@ -21,10 +21,6 @@ const Stack = struct {
     };
     head: ?*Node = null,
 
-    pub fn deinit(self: *Stack, allocator: std.mem.Allocator) void {
-        while (self.pop(allocator)) |_| {}
-    }
-
     pub fn push(self: *Stack, allocator: std.mem.Allocator, type_decl: types.Type) Error!*types.Type {
         const node = try allocator.create(Node);
         node.data = type_decl;
@@ -33,11 +29,10 @@ const Stack = struct {
         return &node.data;
     }
 
-    pub fn pop(self: *Stack, allocator: std.mem.Allocator) ?types.Type {
+    pub fn pop(self: *Stack) ?types.Type {
         if (self.head) |head| {
             const ret = head.data;
             self.head = head.next;
-            allocator.destroy(head);
             return ret;
         } else {
             return null;
@@ -66,10 +61,6 @@ pub const Pass = struct {
         };
     }
 
-    pub fn deinit(self: *Pass) void {
-        self.func_stack.deinit(self.allocator);
-    }
-
     pub fn run(self: *Pass) Error!void {
         var void_type: types.Type = .void;
         _ = try self.func_stack.push(self.allocator, types.Type{ .function = .{ .ret = &void_type } });
@@ -81,18 +72,16 @@ pub const Pass = struct {
             .number_constant => return .number,
             .boolean_constant => return .boolean,
             .string_constant => return .string,
-            .var_get => |_| return try node.symbol_decl.?.decl_type.?.dupe(self.allocator),
+            .var_get => |_| return node.symbol_decl.?.decl_type.?,
             .block => |*block| {
                 for (block.list.items) |statement| {
-                    var stmt_type = try self.typeCheck(statement);
-                    stmt_type.deinit(self.allocator);
+                    _ = try self.typeCheck(statement);
                 }
                 return .void;
             },
             .binary_op => |*binary| {
                 const lhs_type = try self.typeCheck(binary.lhs);
-                var rhs_type = try self.typeCheck(binary.rhs);
-                defer rhs_type.deinit(self.allocator);
+                const rhs_type = try self.typeCheck(binary.rhs);
                 if (!lhs_type.equal(&rhs_type)) {
                     try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in right hand of binary expression, found type \"{any}\"", .{ lhs_type, rhs_type }, binary.rhs.index);
                     return Error.MismatchedTypes;
@@ -104,48 +93,43 @@ pub const Pass = struct {
                 var arg_types = std.ArrayListUnmanaged(types.Type){};
 
                 for (func_decl.args.items) |arg| {
-                    try arg_types.append(self.allocator, try arg.decl_type.?.dupe(self.allocator));
+                    try arg_types.append(self.allocator, arg.decl_type.?);
                 }
 
                 const ret = try self.allocator.create(types.Type);
-                ret.* = try func_decl.ret_type.dupe(self.allocator);
+                ret.* = func_decl.ret_type;
 
-                var func_type = types.Type{
+                const func_type = types.Type{
                     .function = .{
                         .args = arg_types,
                         .ret = ret,
                     },
                 };
-                errdefer func_type.deinit(self.allocator);
 
                 _ = try self.func_stack.push(self.allocator, func_type);
 
-                var body_type = try self.typeCheck(func_decl.body);
-                body_type.deinit(self.allocator);
+                _ = try self.typeCheck(func_decl.body);
 
-                _ = self.func_stack.pop(self.allocator);
+                _ = self.func_stack.pop();
 
                 return func_type;
             },
             .builtin_call => |*call| {
                 const data: builtin.Data = builtin.lookup.kvs[call.idx].value;
                 for (call.args) |arg| {
-                    var arg_type = try self.typeCheck(arg);
-                    arg_type.deinit(self.allocator);
+                    _ = try self.typeCheck(arg);
                 }
-                return try data.ret_type.dupe(self.allocator);
+                return data.ret_type;
             },
             .var_decl => |*var_decl| {
                 if (var_decl.symbol.decl_type) |*decl_type| {
                     var expr_type = try self.typeCheck(var_decl.expr);
-                    defer expr_type.deinit(self.allocator);
                     if (!expr_type.equal(decl_type)) {
                         try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in variable declaration expression, found type \"{any}\"", .{ decl_type, expr_type }, var_decl.expr.index);
                         return Error.MismatchedTypes;
                     }
                 } else {
                     var expr_type = try self.typeCheck(var_decl.expr);
-                    errdefer expr_type.deinit(self.allocator);
                     if (expr_type.equal(&.void)) {
                         try self.err_ctx.newError(.mismatched_types, "Void is not a valid inferred variable type", .{}, var_decl.expr.index);
                         return Error.MismatchedTypes;
@@ -156,7 +140,6 @@ pub const Pass = struct {
             },
             .var_assign => |*var_assign| {
                 var expr_type = try self.typeCheck(var_assign.expr);
-                defer expr_type.deinit(self.allocator);
                 const ident_type = &node.symbol_decl.?.decl_type.?;
                 if (!expr_type.equal(ident_type)) {
                     try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in variable declaration expression, found type \"{any}\"", .{ ident_type, expr_type }, var_assign.expr.index);
@@ -165,8 +148,7 @@ pub const Pass = struct {
                 return .void;
             },
             .return_stmt => |*ret| {
-                var ret_type: types.Type = if (ret.expr) |expr| try self.typeCheck(expr) else .void;
-                defer ret_type.deinit(self.allocator);
+                const ret_type: types.Type = if (ret.expr) |expr| try self.typeCheck(expr) else .void;
                 const func_ret_type = self.func_stack.head.?.data.function.ret;
                 if (!ret_type.equal(func_ret_type)) {
                     try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in function return statement, found type \"{any}\"", .{ func_ret_type, ret_type }, node.index);
@@ -180,19 +162,10 @@ pub const Pass = struct {
     /// Made this its own function because it's long
     pub fn checkUnary(self: *Pass, node: *ast.Node) Error!types.Type {
         const unary = &node.data.unary_op;
-
-        var expr_type = try self.typeCheck(unary.expr);
-        defer expr_type.deinit(self.allocator);
-
+        const expr_type = try self.typeCheck(unary.expr);
         switch (unary.op) {
             .call => |call| {
                 var arg_types = std.ArrayListUnmanaged(types.Type){};
-                defer {
-                    for (arg_types.items) |*arg_type| {
-                        arg_type.deinit(self.allocator);
-                    }
-                    arg_types.deinit(self.allocator);
-                }
 
                 for (call.args.items) |expr| {
                     try arg_types.append(self.allocator, try self.typeCheck(expr));
@@ -210,7 +183,7 @@ pub const Pass = struct {
                                 return Error.MismatchedTypes;
                             }
                         }
-                        return try func.ret.dupe(self.allocator);
+                        return func.ret.*;
                     },
                     else => {
                         try self.err_ctx.newError(.mismatched_types, "Expected function type in call expression, found type {any}", .{expr_type}, node.index);

@@ -79,12 +79,6 @@ pub const Lexer = struct {
         };
     }
 
-    pub fn deinit(self: *Lexer) void {
-        while (self.queue.popFirst()) |node| {
-            self.allocator.destroy(node);
-        }
-    }
-
     /// Returns most recent token
     pub fn peekToken(self: *Lexer) ?*Token {
         if (self.queue.first) |node| {

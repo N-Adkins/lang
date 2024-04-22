@@ -7,40 +7,6 @@ pub const Type = union(enum) {
     string,
     function: struct { args: std.ArrayListUnmanaged(Type) = std.ArrayListUnmanaged(Type){}, ret: *Type },
 
-    pub fn deinit(self: *Type, allocator: std.mem.Allocator) void {
-        switch (self.*) {
-            .function => |*func| {
-                for (func.args.items) |*arg| {
-                    arg.deinit(allocator);
-                }
-                func.args.deinit(allocator);
-                func.ret.deinit(allocator);
-                allocator.destroy(func.ret);
-            },
-            else => {},
-        }
-    }
-
-    pub fn dupe(self: *const Type, allocator: std.mem.Allocator) std.mem.Allocator.Error!Type {
-        switch (self.*) {
-            .function => |*func| {
-                const ret = try allocator.create(Type);
-                ret.* = try func.ret.dupe(allocator);
-                var args = std.ArrayListUnmanaged(Type){};
-                for (func.args.items) |arg| {
-                    try args.append(allocator, try arg.dupe(allocator));
-                }
-                return Type{
-                    .function = .{
-                        .args = args,
-                        .ret = ret,
-                    },
-                };
-            },
-            else => return self.*,
-        }
-    }
-
     pub fn equal(self: *const Type, other: *const Type) bool {
         if (@intFromEnum(self.*) != @intFromEnum(other.*)) {
             return false;

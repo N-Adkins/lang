@@ -24,10 +24,6 @@ pub const Error = struct {
         line_num: usize,
         highlight: usize,
     },
-
-    pub fn deinit(self: *Error, allocator: std.mem.Allocator) void {
-        allocator.free(self.message);
-    }
 };
 
 /// Error context that should be passed to all compilation passes, allows
@@ -37,13 +33,6 @@ pub const ErrorContext = struct {
     errors: std.DoublyLinkedList(Error) = std.DoublyLinkedList(Error){},
     allocator: std.mem.Allocator,
     const Node = std.DoublyLinkedList(Error).Node;
-
-    pub fn deinit(self: *ErrorContext) void {
-        while (self.errors.popFirst()) |node| {
-            node.data.deinit(self.allocator);
-            self.allocator.destroy(node);
-        }
-    }
 
     pub fn newError(self: *ErrorContext, tag: ErrorTag, comptime message_fmt: []const u8, args: anytype, index: ?usize) std.mem.Allocator.Error!void {
         const message = std.fmt.allocPrint(self.allocator, message_fmt, args) catch "Allocation Failure";
@@ -71,9 +60,8 @@ pub const ErrorContext = struct {
 
     pub fn printErrors(self: *ErrorContext) void {
         while (self.errors.popFirst()) |node| {
-            var err = node.data;
+            const err = node.data;
             self.printError(err);
-            err.deinit(self.allocator);
             self.allocator.destroy(node);
         }
     }
