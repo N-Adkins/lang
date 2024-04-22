@@ -5,3 +5,7 @@ var example := fn (array: [number]) -> number {
 };
 
 print(example(test));
+
+test[1] = 83;
+
+print(example(test));

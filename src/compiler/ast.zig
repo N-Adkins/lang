@@ -43,6 +43,7 @@ pub const Node = struct {
         block: Block,
         var_decl: VarDecl,
         var_assign: VarAssign,
+        array_set: ArraySet,
         if_stmt: IfStatement,
         return_stmt: ReturnStatement,
     },
@@ -100,6 +101,12 @@ pub const Node = struct {
 
     const VarAssign = struct {
         name: []u8,
+        expr: *Node,
+    };
+
+    const ArraySet = struct {
+        array: *Node,
+        index: *Node,
         expr: *Node,
     };
 

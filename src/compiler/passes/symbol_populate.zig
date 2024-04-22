@@ -207,6 +207,11 @@ pub const Pass = struct {
                 try self.populateNode(var_decl.expr);
             },
             .var_assign => |*var_assign| try self.populateNode(var_assign.expr),
+            .array_set => |*array_set| {
+                try self.populateNode(array_set.index);
+                try self.populateNode(array_set.expr);
+                try self.populateNode(array_set.array);
+            },
             .if_stmt => |*if_stmt| {
                 try self.populateNode(if_stmt.expr);
                 try self.populateNode(if_stmt.true_body);

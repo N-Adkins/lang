@@ -437,7 +437,21 @@ pub const Parser = struct {
                         else => {},
                     }
                 }
-                break :blk try self.parseExpression();
+                const expr = try self.parseExpression();
+                switch (expr.data) {
+                    .unary_op => |unary| {
+                        switch (unary.op) {
+                            .index => |_| {
+                                if (self.previous != null and self.previous.?.tag == .equals) {
+                                    break :blk try self.parseArraySet(expr);
+                                }
+                            },
+                            else => {},
+                        }
+                    },
+                    else => {},
+                }
+                break :blk expr;
             },
             .l_curly => blk: {
                 needs_semicolon = false;
@@ -448,7 +462,23 @@ pub const Parser = struct {
                 break :blk try self.parseIf();
             },
             .keyword_return => try self.parseReturn(),
-            else => try self.parseExpression(),
+            else => blk: {
+                const expr = try self.parseExpression();
+                switch (expr.data) {
+                    .unary_op => |unary| {
+                        switch (unary.op) {
+                            .index => |_| {
+                                if (self.previous != null and self.previous.?.tag == .equals) {
+                                    break :blk try self.parseArraySet(expr);
+                                }
+                            },
+                            else => {},
+                        }
+                    },
+                    else => {},
+                }
+                break :blk expr;
+            },
         };
 
         if (needs_semicolon) {
@@ -600,6 +630,25 @@ pub const Parser = struct {
             try self.err_ctx.errorFromToken(.unexpected_token, "Expected expression or ';' after return keyword, found end", .{}, start);
             return Error.UnexpectedToken;
         }
+    }
+
+    pub fn parseArraySet(self: *Parser, array_get: *ast.Node) Error!*ast.Node {
+        const array = array_get.data.unary_op.expr;
+        const index = array_get.data.unary_op.op.index.index;
+        _ = try self.expectToken(.equals);
+        const expr = try self.parseExpression();
+        const node = try self.allocator.create(ast.Node);
+        node.* = .{
+            .index = array.index,
+            .data = .{
+                .array_set = .{
+                    .array = array,
+                    .index = index,
+                    .expr = expr,
+                },
+            },
+        };
+        return node;
     }
 
     /// Errors if the current token doesn't have the passed tag.

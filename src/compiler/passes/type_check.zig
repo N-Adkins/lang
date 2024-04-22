@@ -190,6 +190,26 @@ pub const Pass = struct {
                 }
                 return .void;
             },
+            .array_set => |*array_set| {
+                const const_array_type: types.Type = .{ .array = undefined };
+                const const_num_type: types.Type = .number;
+                const array_type = try self.typeCheck(array_set.array);
+                const index_type = try self.typeCheck(array_set.index);
+                const expr_type = try self.typeCheck(array_set.expr);
+                if (@intFromEnum(array_type) != @intFromEnum(const_array_type)) { // don't want deep check
+                    try self.err_ctx.newError(.mismatched_types, "Expected array type on left of array set, found type {any}", .{array_type}, array_set.expr.index);
+                    return Error.MismatchedTypes;
+                }
+                if (!index_type.equal(&const_num_type)) {
+                    try self.err_ctx.newError(.mismatched_types, "Expected number type as index, found type {any}", .{index_type}, array_set.index.index);
+                    return Error.MismatchedTypes;
+                }
+                if (!array_type.array.base.equal(&expr_type)) {
+                    try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" on right side of array set, found type {any}", .{ array_type.array.base, expr_type }, array_set.expr.index);
+                    return Error.MismatchedTypes;
+                }
+                return .void;
+            },
             .if_stmt => |*if_stmt| {
                 const expr_type = try self.typeCheck(if_stmt.expr);
                 const bool_type: types.Type = .boolean;

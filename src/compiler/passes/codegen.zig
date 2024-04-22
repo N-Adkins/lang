@@ -167,6 +167,12 @@ pub const Pass = struct {
                 try self.pushOp(.VAR_SET);
                 try self.pushByte(index);
             },
+            .array_set => |*array_set| {
+                try self.genNode(array_set.expr);
+                try self.genNode(array_set.index);
+                try self.genNode(array_set.array);
+                try self.pushOp(.ARRAY_SET);
+            },
             .if_stmt => |*if_stmt| {
                 try self.genNode(if_stmt.expr);
                 try self.pushOp(.BRANCH_NEQ);
