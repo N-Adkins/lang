@@ -205,6 +205,7 @@ pub const VM = struct {
         switch (idx) {
             0 => try self.builtinPrint(),
             1 => try self.builtinToString(),
+            2 => try self.builtinLength(),
             else => unreachable,
         }
     }
@@ -307,6 +308,11 @@ pub const VM = struct {
             },
         };
         try self.eval_stack.push(value.Value{ .data = .{ .object = object } });
+    }
+
+    inline fn builtinLength(self: *VM) Error!void {
+        const array = try self.eval_stack.pop();
+        try self.eval_stack.push(value.Value{ .data = .{ .number = @floatFromInt(array.data.object.data.array.items.items.len) } });
     }
 
     /// Fetches the next byte and errors if there isn't one

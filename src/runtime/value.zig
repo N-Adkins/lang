@@ -99,11 +99,11 @@ pub const Object = struct {
         switch (self.data) {
             .string => |str| {
                 var str_ref = str;
-                new.data.string = try str_ref.dupe(allocator);
+                new.data = .{ .string = try str_ref.dupe(allocator) };
             },
             .array => |array| {
                 var array_ref = array;
-                new.data.array = try array_ref.dupe(allocator);
+                new.data = .{ .array = try array_ref.dupe(allocator) };
             },
         }
 

@@ -277,8 +277,8 @@ pub const Parser = struct {
 
     fn parseBuiltin(self: *Parser) Error!*ast.Node {
         const identifier = try self.expectToken(.identifier);
-        const idx: u8 = @truncate(builtin.lookup.getIndex(self.lexer.source[identifier.start..identifier.end]).?);
-        const data: builtin.Data = builtin.lookup.kvs[idx].value;
+        const data: builtin.Data = builtin.lookup.get(self.lexer.source[identifier.start..identifier.end]).?;
+        const idx = data.id;
 
         _ = try self.expectToken(.l_paren);
 

@@ -141,9 +141,27 @@ pub const Pass = struct {
                 return func_type;
             },
             .builtin_call => |*call| {
-                const data: builtin.Data = builtin.lookup.kvs[call.idx].value;
-                for (call.args) |arg| {
-                    _ = try self.typeCheck(arg);
+                const data: builtin.Data = blk: {
+                    for (builtin.lookup.kvs) |pairs| {
+                        if (pairs.value.id == call.idx) {
+                            break :blk pairs.value;
+                        }
+                    }
+                    unreachable;
+                };
+                for (0..call.args.len) |i| {
+                    const arg = call.args[i];
+                    const arg_type = try self.typeCheck(arg);
+                    if (data.arg_types) |arg_types| {
+                        const correct_type = if (data.deep_check_types)
+                            arg_type.equal(&arg_types[i])
+                        else
+                            @intFromEnum(arg_types[i]) == @intFromEnum(arg_type);
+                        if (!correct_type) {
+                            try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in builtin function call, found type \"{any}\"", .{ arg_types[i], arg_type }, arg.index);
+                            return Error.MismatchedTypes;
+                        }
+                    }
                 }
                 return data.ret_type;
             },

@@ -1,8 +1,16 @@
-var fib := fn (self, i: number) -> number {
-    if (i == 0 or i == 1) {
-        return i;
-    }
-    return self(i - 1) + self(i - 2);
+var test_array := ["hello", "blah", "other", "thing"];
+
+var print_each := fn (array: [string]) -> void {
+    var iter := fn (self, array: [string], i: number) -> void {
+        if (i == length(array)) {
+            return;
+        }
+        print(array[i]);
+        self(array, i+1);
+        return;
+    };
+    iter(array, 0);
+    return;
 };
 
-print(fib(30));
+print_each(test_array);
