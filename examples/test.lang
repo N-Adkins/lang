@@ -1,26 +1,11 @@
 var fib := fn (x: number) -> number {
-    var iter := fn (self, state: [number], index: number, max: number) -> number {
-        if (index == max) {
-            return state[index % 2];
-        }
-        state[index % 2] = state[0] + state[1];
-        return self(state, index+1, max);
-    };
     var state := [0, 1];
-    return iter(state, 0, x);
-};
-
-var fib_bad := fn (self, i: number) -> number {
-    if (i <= 1) {
-        return i;
+    var i := 0;
+    while (i < x) {
+        state[i % 2] = state[0] + state[1];
+        i = i + 1;
     }
-    return self(i - 1) + self(i - 2);
+    return state[i % 2];
 };
 
-// print(fib_bad(30));
-
-var i := 0;
-while (i < 10) {
-    print(i);
-    i = i + 1;
-}
+print(fib(30));

@@ -193,10 +193,11 @@ pub const Pass = struct {
                 try self.pushByte(0); // placeholder
                 try self.genNode(while_loop.body);
                 const after_body = func.items.len;
-                const distance: u8 = @as(u8, @truncate(after_body - before_condition)) + 2;
-                func.items[branch_byte] = distance;
+                const jump_distance: u8 = @as(u8, @truncate(after_body - before_condition)) + 2;
+                const branch_distance: u8 = @as(u8, @truncate(after_body - branch_byte)) + 1;
+                func.items[branch_byte] = branch_distance;
                 try self.pushOp(.JUMP_BACK);
-                try self.pushByte(distance);
+                try self.pushByte(jump_distance);
             },
             .array_set => |*array_set| {
                 try self.genNode(array_set.expr);
