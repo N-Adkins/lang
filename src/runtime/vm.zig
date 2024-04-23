@@ -82,6 +82,8 @@ pub const VM = struct {
             .CALL_BUILTIN => try self.opCallBuiltin(),
             .NEGATE => try self.opNegate(),
             .EQUAL => try self.opEqual(),
+            .GREATER_THAN => try self.opGreaterThan(),
+            .GREATER_THAN_EQUALS => try self.opGreaterThanEquals(),
             .AND => try self.opAnd(),
             .OR => try self.opOr(),
             .BRANCH_NEQ => try self.opBranchNEQ(),
@@ -230,6 +232,18 @@ pub const VM = struct {
         const lhs = try self.eval_stack.pop();
         const rhs = try self.eval_stack.pop();
         try self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.equals(rhs) } });
+    }
+
+    inline fn opGreaterThan(self: *VM) Error!void {
+        const lhs = try self.eval_stack.pop();
+        const rhs = try self.eval_stack.pop();
+        try self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.number > rhs.data.number } });
+    }
+
+    inline fn opGreaterThanEquals(self: *VM) Error!void {
+        const lhs = try self.eval_stack.pop();
+        const rhs = try self.eval_stack.pop();
+        try self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.number >= rhs.data.number } });
     }
 
     inline fn opAnd(self: *VM) Error!void {

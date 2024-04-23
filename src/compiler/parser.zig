@@ -133,6 +133,10 @@ pub const Parser = struct {
                 .l_square => ast.Operator{ .index = undefined },
                 .equals_equals => ast.Operator.equals,
                 .bang_equals => ast.Operator.not_equals,
+                .greater_than => ast.Operator.greater_than,
+                .greater_than_equals => ast.Operator.greater_than_equals,
+                .less_than => ast.Operator.less_than,
+                .less_than_equals => ast.Operator.less_than_equals,
                 .keyword_and => ast.Operator.boolean_and,
                 .keyword_or => ast.Operator.boolean_or,
                 else => break,
@@ -709,9 +713,8 @@ pub const Parser = struct {
         return switch (op) {
             .add, .sub => .{ .lhs = 10, .rhs = 11 },
             .mul, .div => .{ .lhs = 12, .rhs = 13 },
-            .mod,
-            => .{ .lhs = 14, .rhs = 15 },
-            .equals, .not_equals => .{ .lhs = 5, .rhs = 6 },
+            .mod => .{ .lhs = 14, .rhs = 15 },
+            .equals, .not_equals, .less_than, .less_than_equals, .greater_than, .greater_than_equals => .{ .lhs = 5, .rhs = 6 },
             .boolean_and, .boolean_or => .{ .lhs = 2, .rhs = 3 },
             else => null,
         };

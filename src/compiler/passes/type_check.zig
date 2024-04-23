@@ -103,6 +103,22 @@ pub const Pass = struct {
                         }
                         return .boolean;
                     },
+                    .greater_than, .less_than, .greater_than_equals, .less_than_equals => {
+                        const number_type: types.Type = .number;
+                        if (!lhs_type.equal(&rhs_type) or @intFromEnum(lhs_type) != @intFromEnum(number_type) or @intFromEnum(rhs_type) != @intFromEnum(number_type)) {
+                            try self.err_ctx.newError(.mismatched_types, "Expected number types binary expression, found type \"{any}\" and \"{any}\"", .{ lhs_type, rhs_type }, binary.rhs.index);
+                            return Error.MismatchedTypes;
+                        }
+                        return .boolean;
+                    },
+                    .add, .sub, .mul, .div => {
+                        const number_type: types.Type = .number;
+                        if (!lhs_type.equal(&rhs_type) or @intFromEnum(lhs_type) != @intFromEnum(number_type) or @intFromEnum(rhs_type) != @intFromEnum(number_type)) {
+                            try self.err_ctx.newError(.mismatched_types, "Expected number types binary expression, found type \"{any}\" and \"{any}\"", .{ lhs_type, rhs_type }, binary.rhs.index);
+                            return Error.MismatchedTypes;
+                        }
+                        return .number;
+                    },
                     else => {
                         if (!lhs_type.equal(&rhs_type)) {
                             try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in right hand of binary expression, found type \"{any}\"", .{ lhs_type, rhs_type }, binary.rhs.index);

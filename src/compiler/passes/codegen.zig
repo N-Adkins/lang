@@ -110,6 +110,20 @@ pub const Pass = struct {
                         try self.pushOp(.NEGATE);
                         return;
                     },
+                    .greater_than => .GREATER_THAN,
+                    .greater_than_equals => .GREATER_THAN_EQUALS,
+                    .less_than => {
+                        try self.genNode(binary.rhs);
+                        try self.genNode(binary.lhs);
+                        try self.pushOp(.GREATER_THAN_EQUALS);
+                        return;
+                    },
+                    .less_than_equals => {
+                        try self.genNode(binary.rhs);
+                        try self.genNode(binary.lhs);
+                        try self.pushOp(.GREATER_THAN);
+                        return;
+                    },
                     else => unreachable,
                 };
                 try self.genNode(binary.lhs);

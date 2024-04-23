@@ -11,6 +11,10 @@ pub const Operator = union(enum) {
     mod,
     equals,
     not_equals,
+    less_than,
+    less_than_equals,
+    greater_than,
+    greater_than_equals,
     boolean_or,
     boolean_and,
     call: struct {

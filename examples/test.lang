@@ -11,4 +11,11 @@ var fib := fn (x: number) -> number {
     return iter(state, 0, x);
 };
 
-print(fib(60));
+var fib_bad := fn (self, i: number) -> number {
+    if (i >= 1) {
+        return i;
+    }
+    return self(i - 1) + self(i - 2);
+};
+
+print(fib_bad(30));
