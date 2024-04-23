@@ -37,8 +37,8 @@ pub const VM = struct {
         var vm = VM{
             .bytes = bytes,
             .constants = constants,
-            .eval_stack = try stack.Stack(value.Value).init(allocator, 0xFF),
-            .call_stack = try stack.Stack(CallFrame).init(allocator, 0xFF),
+            .eval_stack = try stack.Stack(value.Value).init(allocator, 0xFFFF),
+            .call_stack = try stack.Stack(CallFrame).init(allocator, 0xFFFF),
             .garbage_collector = gc.GC.init(allocator),
             .allocator = allocator,
         };
@@ -76,6 +76,7 @@ pub const VM = struct {
             .SUB => try self.opSub(),
             .MUL => try self.opMul(),
             .DIV => try self.opDiv(),
+            .MOD => try self.opMod(),
             .CALL => try self.opCall(),
             .RETURN => try self.opReturn(),
             .CALL_BUILTIN => try self.opCallBuiltin(),
@@ -165,6 +166,16 @@ pub const VM = struct {
         try self.eval_stack.push(.{
             .data = .{
                 .number = lhs.data.number / rhs.data.number,
+            },
+        });
+    }
+
+    inline fn opMod(self: *VM) Error!void {
+        const rhs = try self.eval_stack.pop();
+        const lhs = try self.eval_stack.pop();
+        try self.eval_stack.push(.{
+            .data = .{
+                .number = @mod(lhs.data.number, rhs.data.number),
             },
         });
     }

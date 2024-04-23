@@ -128,6 +128,7 @@ pub const Parser = struct {
                 .minus => ast.Operator.sub,
                 .star => ast.Operator.mul,
                 .slash => ast.Operator.div,
+                .percent => ast.Operator.mod,
                 .l_paren => ast.Operator{ .call = undefined },
                 .l_square => ast.Operator{ .index = undefined },
                 .equals_equals => ast.Operator.equals,
@@ -708,6 +709,8 @@ pub const Parser = struct {
         return switch (op) {
             .add, .sub => .{ .lhs = 10, .rhs = 11 },
             .mul, .div => .{ .lhs = 12, .rhs = 13 },
+            .mod,
+            => .{ .lhs = 14, .rhs = 15 },
             .equals, .not_equals => .{ .lhs = 5, .rhs = 6 },
             .boolean_and, .boolean_or => .{ .lhs = 2, .rhs = 3 },
             else => null,

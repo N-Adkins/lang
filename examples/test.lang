@@ -1,16 +1,14 @@
-var test_array := ["hello", "blah", "other", "thing"];
-
-var print_each := fn (array: [string]) -> void {
-    var iter := fn (self, array: [string], i: number) -> void {
-        if (i == length(array)) {
-            return;
+var fib := fn (x: number) -> number {
+    var iter := fn (self, state: [number], index: number, max: number) -> number {
+        if (index == max) {
+            return 0;
         }
-        print(array[i]);
-        self(array, i+1);
-        return;
+        state[index % 2] = state[0] + state[1];
+        self(state, index+1, max);
+        return state[index % 2];
     };
-    iter(array, 0);
-    return;
+    var state := [0, 1];
+    return iter(state, 0, x);
 };
 
-print_each(test_array);
+print(fib(60));

@@ -11,6 +11,7 @@ pub const Opcode = enum(u8) {
     SUB, // pops 2 values off of stack, pushes result after subtracting them
     MUL, // pops 2 values off of stack, pushes result after multiplying them
     DIV, // pops 2 values off of stack, pushes result after dividing them
+    MOD, // pops 2 values off of stack, pushes result after modulus
     CALL, // u8 arg count
     RETURN, // u8 1 if there is a return value, 0 if not
     CALL_BUILTIN, // u8 builtin function number
@@ -63,6 +64,9 @@ pub fn dumpBytecode(funcs: [][]const u8) void {
                     std.debug.print("\n", .{});
                 },
                 .DIV => {
+                    std.debug.print("\n", .{});
+                },
+                .MOD => {
                     std.debug.print("\n", .{});
                 },
                 .CALL => {

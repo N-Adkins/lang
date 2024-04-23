@@ -99,6 +99,7 @@ pub const Pass = struct {
                     .sub => .SUB,
                     .mul => .MUL,
                     .div => .DIV,
+                    .mod => .MOD,
                     .boolean_and => .AND,
                     .boolean_or => .OR,
                     .equals => .EQUAL,

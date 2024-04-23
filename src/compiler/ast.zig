@@ -8,6 +8,7 @@ pub const Operator = union(enum) {
     sub,
     mul,
     div,
+    mod,
     equals,
     not_equals,
     boolean_or,

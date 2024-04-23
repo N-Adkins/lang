@@ -19,6 +19,7 @@ pub const TokenTag = enum {
     colon,
     colon_equals,
     right_arrow,
+    percent,
     bang,
     bang_equals,
     minus,
@@ -196,6 +197,7 @@ pub const Lexer = struct {
             ']' => tag = .r_square,
             ',' => tag = .comma,
             '.' => tag = .period,
+            '%' => tag = .percent,
             '!' => if (self.peekChar()) |c| {
                 switch (c) {
                     '=' => {
