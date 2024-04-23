@@ -22,7 +22,8 @@ pub const Operator = union(enum) {
 
 pub const SymbolDecl = struct {
     name: []const u8,
-    decl_type: ?types.Type,
+    decl_type: ?types.Type = null,
+    function_decl: ?*Node = null,
 };
 
 /// Abstract Syntax Tree Node, contains both
@@ -80,6 +81,8 @@ pub const Node = struct {
         args: std.ArrayListUnmanaged(SymbolDecl) = std.ArrayListUnmanaged(SymbolDecl){},
         ret_type: types.Type,
         body: *Node,
+        func_idx: usize = undefined, // used in self builtin
+        func_type: types.Type = undefined, // used in self builtin
     };
 
     const BuiltinCall = struct {

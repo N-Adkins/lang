@@ -19,6 +19,7 @@ const SymbolStack = struct {
         prev: ?*Node = null,
         symbol: *ast.SymbolDecl,
     };
+    self_arg: bool = false,
     allocator: std.mem.Allocator,
     front: ?*Node = null,
 
@@ -179,9 +180,14 @@ pub const Pass = struct {
                 }
             },
             .function_decl => |*func_decl| {
-                var stack = try self.stack_stack.push(self.allocator, SymbolStack{ .allocator = self.allocator });
+                var stack = try self.stack_stack.push(self.allocator, SymbolStack{ .allocator = self.allocator, .self_arg = func_decl.self_arg });
                 for (func_decl.args.items) |*arg| {
                     try stack.push(arg);
+                }
+                if (func_decl.self_arg) {
+                    const symbol = try self.allocator.create(ast.SymbolDecl);
+                    symbol.* = ast.SymbolDecl{ .name = try self.allocator.dupe(u8, "self"), .function_decl = node };
+                    try stack.push(symbol);
                 }
                 try self.populateNode(func_decl.body);
                 var ret = self.stack_stack.pop();

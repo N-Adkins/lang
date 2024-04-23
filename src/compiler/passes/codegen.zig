@@ -53,8 +53,11 @@ pub const Pass = struct {
                 _ = try self.pushLocal(arg);
             }
         }
+        const frame = &self.func_stack.first.?.data;
+        if (call_func) |func| {
+            func.data.function_decl.func_idx = frame.func;
+        }
         try self.genNode(body);
-        const frame = self.func_stack.first.?.data;
         const stack_alloc = &[2]u8{ @intFromEnum(byte.Opcode.STACK_ALLOC), frame.local_count };
         try self.bytecode.items[frame.func].code.insertSlice(self.allocator, 0, stack_alloc);
         self.popFrame();
@@ -79,6 +82,12 @@ pub const Pass = struct {
                 try self.pushConstant(value.Value{ .data = .{ .object = object } });
             },
             .var_get => |_| {
+                if (node.symbol_decl.?.function_decl) |func| {
+                    if (std.mem.eql(u8, node.data.var_get.name, "self")) {
+                        try self.pushConstant(value.Value{ .data = .{ .func = func.data.function_decl.func_idx } });
+                        return;
+                    }
+                }
                 const decl = node.symbol_decl.?;
                 const index = try self.getLocal(decl);
                 try self.pushOp(.VAR_GET);

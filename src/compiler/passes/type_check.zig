@@ -72,7 +72,12 @@ pub const Pass = struct {
             .number_constant => return .number,
             .boolean_constant => return .boolean,
             .string_constant => return .string,
-            .var_get => |_| return node.symbol_decl.?.decl_type.?,
+            .var_get => |_| return {
+                if (node.symbol_decl.?.function_decl) |func| {
+                    return func.data.function_decl.func_type;
+                }
+                return node.symbol_decl.?.decl_type.?;
+            },
             .block => |*block| {
                 for (block.list.items) |statement| {
                     _ = try self.typeCheck(statement);
@@ -124,6 +129,8 @@ pub const Pass = struct {
                         .ret = ret,
                     },
                 };
+
+                func_decl.func_type = func_type;
 
                 _ = try self.func_stack.push(self.allocator, func_type);
 
