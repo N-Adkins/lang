@@ -44,7 +44,6 @@ pub fn Stack(comptime T: type) type {
 
         pub inline fn peekFrameOffset(self: *Self, frame: usize, offset: usize) *T {
             if (frame +% offset > self.head) {
-                @setCold(true);
                 vm.errorHandle(Error.Overflow);
                 unreachable;
             }
@@ -53,7 +52,6 @@ pub fn Stack(comptime T: type) type {
 
         pub inline fn push(self: *Self, item: T) void {
             if (self.head >= self.items.len) {
-                @setCold(true);
                 vm.errorHandle(Error.Overflow);
                 unreachable;
             }
@@ -63,7 +61,6 @@ pub fn Stack(comptime T: type) type {
 
         pub inline fn pop(self: *Self) T {
             if (self.head < self.head -% 1) {
-                @setCold(true);
                 vm.errorHandle(Error.Underflow);
                 unreachable;
             }
@@ -73,7 +70,6 @@ pub fn Stack(comptime T: type) type {
 
         pub inline fn peek(self: *Self) *T {
             if (self.head < self.head -% 1) {
-                @setCold(true);
                 vm.errorHandle(Error.Underflow);
                 unreachable;
             }

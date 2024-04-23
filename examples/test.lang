@@ -17,4 +17,4 @@ var fib_bad := fn (self, i: number) -> number {
     return self(i - 1) + self(i - 2);
 };
 
-print(fib_bad(30));
+print(fib_bad(34));

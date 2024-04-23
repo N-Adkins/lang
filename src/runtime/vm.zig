@@ -107,12 +107,10 @@ pub const VM = struct {
     inline fn opConstant(self: *VM) void {
         const index = self.nextByte();
         if (index >= self.constants.len) {
-            @setCold(true);
             errorHandle(Error.InvalidConstant);
             return;
         }
         const constant = self.constants[index].dupe(self.allocator) catch |err| {
-            @setCold(true);
             errorHandle(err);
             return;
         };
@@ -214,7 +212,6 @@ pub const VM = struct {
         const is_return = self.nextByte() != 0;
         const call_frame = self.call_stack.pop();
         if (call_frame.root) {
-            @setCold(true);
             return;
         }
         self.current_func = call_frame.func;
@@ -306,7 +303,6 @@ pub const VM = struct {
         };
         for (0..items) |_| {
             array.append(self.allocator, self.eval_stack.pop()) catch |err| {
-                @setCold(true);
                 errorHandle(err);
                 unreachable;
             };
@@ -327,7 +323,6 @@ pub const VM = struct {
         var array = &array_obj.data.object.data.array.items;
         const item = self.eval_stack.pop();
         array.append(self.allocator, item) catch |err| {
-            @setCold(true);
             errorHandle(err);
             unreachable;
         };
@@ -339,7 +334,6 @@ pub const VM = struct {
         const index_value = self.eval_stack.pop();
         const index: usize = @intFromFloat(@trunc(index_value.data.number));
         if (array.items.len <= index) {
-            @setCold(true);
             errorHandle(Error.ArrayOutOfBounds);
             return;
         }
@@ -353,7 +347,6 @@ pub const VM = struct {
         const index: usize = @intFromFloat(@trunc(index_value.data.number));
         const item = self.eval_stack.pop();
         if (array.items.len <= index) {
-            @setCold(true);
             errorHandle(Error.ArrayOutOfBounds);
             return;
         }
@@ -396,7 +389,6 @@ pub const VM = struct {
     /// Fetches the next byte and errors if there isn't one
     inline fn nextByte(self: *VM) u8 {
         if (self.pc >= self.bytes[self.current_func].len) {
-            @setCold(true);
             errorHandle(Error.MalformedInstruction);
         }
         const ret = self.bytes[self.current_func][self.pc];
