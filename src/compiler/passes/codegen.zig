@@ -47,6 +47,9 @@ pub const Pass = struct {
     /// Wrapper over genNode but with handling local variable allocation
     fn genFunc(self: *Pass, body: *ast.Node, call_func: ?*ast.Node) Error!usize {
         _ = try self.pushFrame();
+        _ = try self.pushOp(.STACK_ALLOC);
+        const alloc_count = self.bytecode.items[self.func_stack.first.?.data.func].code.items.len;
+        _ = try self.pushByte(0); // temp
         if (call_func) |func| {
             const decl = func.data.function_decl;
             for (decl.args.items) |*arg| {
@@ -58,8 +61,7 @@ pub const Pass = struct {
             func.data.function_decl.func_idx = frame.func;
         }
         try self.genNode(body);
-        const stack_alloc = &[2]u8{ @intFromEnum(byte.Opcode.STACK_ALLOC), frame.local_count };
-        try self.bytecode.items[frame.func].code.insertSlice(self.allocator, 0, stack_alloc);
+        self.bytecode.items[frame.func].code.items[alloc_count] = frame.local_count;
         self.popFrame();
         return frame.func;
     }
