@@ -12,12 +12,10 @@ var fib := fn (x: number) -> number {
 };
 
 var fib_bad := fn (self, i: number) -> number {
-    if (i >= 1) {
+    if (i <= 1) {
         return i;
     }
     return self(i - 1) + self(i - 2);
 };
 
-print(length("test"));
-
-print(fib_bad(20));
+print(fib_bad(30));

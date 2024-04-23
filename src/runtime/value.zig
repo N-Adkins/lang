@@ -49,17 +49,14 @@ pub const Value = struct {
         }
     }
 
-    pub fn dupe(self: *const Value, allocator: std.mem.Allocator) std.mem.Allocator.Error!Value {
-        var new = Value{ .data = undefined };
-
+    pub inline fn dupe(self: *const Value, allocator: std.mem.Allocator) std.mem.Allocator.Error!Value {
+        @setCold(false);
         switch (self.data) {
-            .object => |obj| new.data = .{ .object = try obj.dupe(allocator) },
+            .object => |obj| return .{ .data = .{ .object = try obj.dupe(allocator) } },
             inline else => |_| {
-                new.data = self.data;
+                return self.*;
             },
         }
-
-        return new;
     }
 
     /// Assumes both are the same type
@@ -92,7 +89,7 @@ pub const Object = struct {
         }
     }
 
-    pub fn dupe(self: *const Object, allocator: std.mem.Allocator) std.mem.Allocator.Error!*Object {
+    pub inline fn dupe(self: *const Object, allocator: std.mem.Allocator) std.mem.Allocator.Error!*Object {
         const new = try allocator.create(Object);
         errdefer allocator.destroy(new);
 

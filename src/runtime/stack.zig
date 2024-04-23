@@ -1,6 +1,7 @@
 //! Generic Stack Structure
 
 const std = @import("std");
+const vm = @import("vm.zig");
 
 pub const Error = error{
     Overflow,
@@ -16,8 +17,12 @@ pub fn Stack(comptime T: type) type {
         items: []T,
         head: usize = 0,
 
-        pub fn init(allocator: std.mem.Allocator, size: usize) Error!Self {
-            const items = try allocator.alloc(T, size);
+        pub fn init(allocator: std.mem.Allocator, size: usize) Self {
+            const items = allocator.alloc(T, size) catch |err| {
+                @setCold(true);
+                vm.errorHandle(err);
+                unreachable;
+            };
             return Self{
                 .items = items,
             };
@@ -31,38 +36,46 @@ pub fn Stack(comptime T: type) type {
             return self.head;
         }
 
-        pub inline fn popFrame(self: *Self, frame: usize) Error!void {
+        pub inline fn popFrame(self: *Self, frame: usize) void {
             while (self.head > frame) {
-                _ = try self.pop();
+                _ = self.pop();
             }
         }
 
-        pub inline fn peekFrameOffset(self: *Self, frame: usize, offset: usize) Error!*T {
+        pub inline fn peekFrameOffset(self: *Self, frame: usize, offset: usize) *T {
             if (frame +% offset > self.head) {
-                return Error.Overflow;
+                @setCold(true);
+                vm.errorHandle(Error.Overflow);
+                unreachable;
             }
             return &self.items[frame + offset];
         }
 
-        pub inline fn push(self: *Self, item: T) Error!void {
+        pub inline fn push(self: *Self, item: T) void {
             if (self.head >= self.items.len) {
-                return Error.Overflow;
+                @setCold(true);
+                vm.errorHandle(Error.Overflow);
+                unreachable;
             }
             self.items[self.head] = item;
             self.head += 1;
         }
 
-        pub inline fn pop(self: *Self) Error!T {
+        pub inline fn pop(self: *Self) T {
             if (self.head < self.head -% 1) {
-                return Error.Underflow;
+                @setCold(true);
+                vm.errorHandle(Error.Underflow);
+                unreachable;
             }
             self.head -= 1;
             return self.items[self.head];
         }
 
-        pub inline fn peek(self: *Self) Error!*T {
+        pub inline fn peek(self: *Self) *T {
             if (self.head < self.head -% 1) {
-                return Error.Underflow;
+                @setCold(true);
+                vm.errorHandle(Error.Underflow);
+                unreachable;
             }
             return &self.items[self.head - 1];
         }

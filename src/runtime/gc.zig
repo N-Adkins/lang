@@ -1,5 +1,6 @@
 const std = @import("std");
 const value = @import("value.zig");
+const vm = @import("vm.zig");
 
 pub const GC = struct {
     record_list: ?*value.Object = null,
@@ -20,8 +21,11 @@ pub const GC = struct {
         }
     }
 
-    pub fn newObject(self: *GC) std.mem.Allocator.Error!*value.Object {
-        const object = try self.allocator.create(value.Object);
+    pub fn newObject(self: *GC) *value.Object {
+        const object = self.allocator.create(value.Object) catch |err| {
+            vm.errorHandle(err);
+            unreachable;
+        };
         object.next = self.record_list;
         self.record_list = object;
         return object;

@@ -35,5 +35,5 @@ pub fn main() !void {
     defer compile_result.deinit(allocator);
     byte.dumpBytecode(compile_result.bytecode);
 
-    try runtime.run(allocator, compile_result.bytecode, compile_result.constants);
+    runtime.run(allocator, compile_result.bytecode, compile_result.constants);
 }

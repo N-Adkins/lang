@@ -19,6 +19,8 @@ pub const Opcode = enum(u8) {
     EQUAL, // pops 2 values off of stack, pushes boolean result after comparing
     GREATER_THAN, // pops 2 values off of stack, pushes boolean result after comparing
     GREATER_THAN_EQUALS, // pops 2 values off of stack, pushes boolean result after comparing,
+    LESS_THAN, // pops 2 values off of stack, pushes boolean result after comparing
+    LESS_THAN_EQUALS, // pops 2 values off of stack, pushes boolean result after comparing
     AND, // pops 2 values off of stack, assumes boolean, pushes boolean after comparing
     OR, // pops 2 values off of stack, assumes boolean, pushes boolean after comparing
     BRANCH_NEQ, // u8 offset, pops value off of stack, if false then jump to offset, otherwise nothing
@@ -93,6 +95,12 @@ pub fn dumpBytecode(funcs: [][]const u8) void {
                     std.debug.print("\n", .{});
                 },
                 .GREATER_THAN_EQUALS => {
+                    std.debug.print("\n", .{});
+                },
+                .LESS_THAN => {
+                    std.debug.print("\n", .{});
+                },
+                .LESS_THAN_EQUALS => {
                     std.debug.print("\n", .{});
                 },
                 .AND => {

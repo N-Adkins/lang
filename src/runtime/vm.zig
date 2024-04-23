@@ -14,6 +14,12 @@ pub const Error = error{
     ArrayOutOfBounds,
 } || stack.Error;
 
+pub fn errorHandle(err: Error) void {
+    @setCold(true);
+    std.debug.print("Runtime Error: \"{s}\"\n", .{@errorName(err)});
+    std.posix.exit(0);
+}
+
 /// Used in call stack to maintain function calls
 const CallFrame = struct {
     stack_offset: usize, // call frame in eval stack
@@ -31,18 +37,19 @@ pub const VM = struct {
     call_stack: stack.Stack(CallFrame),
     garbage_collector: gc.GC,
     pc: usize = 0,
+    err: ?Error = null,
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator, bytes: [][]const u8, constants: []const value.Value) Error!VM {
+    pub fn init(allocator: std.mem.Allocator, bytes: [][]const u8, constants: []const value.Value) VM {
         var vm = VM{
             .bytes = bytes,
             .constants = constants,
-            .eval_stack = try stack.Stack(value.Value).init(allocator, 0xFFFF),
-            .call_stack = try stack.Stack(CallFrame).init(allocator, 0xFFFF),
+            .eval_stack = stack.Stack(value.Value).init(allocator, 0xFFFF),
+            .call_stack = stack.Stack(CallFrame).init(allocator, 0xFFFF),
             .garbage_collector = gc.GC.init(allocator),
             .allocator = allocator,
         };
-        try vm.call_stack.push(CallFrame{ .index = 0, .func = 0, .stack_offset = 0, .root = true });
+        vm.call_stack.push(CallFrame{ .index = 0, .func = 0, .stack_offset = 0, .root = true });
         return vm;
     }
 
@@ -53,231 +60,256 @@ pub const VM = struct {
     }
 
     /// Runs VM
-    pub inline fn run(self: *VM) Error!void {
+    pub inline fn run(self: *VM) void {
         while (self.pc < self.bytes[self.current_func].len) {
-            try self.nextInstr();
+            self.nextInstr();
         }
         while (self.eval_stack.head > 0) {
-            _ = try self.eval_stack.pop();
+            _ = self.eval_stack.pop();
             //std.debug.print("{any}\n", .{item});
         }
         self.garbage_collector.run(self.eval_stack.items[0..self.eval_stack.head]);
     }
 
     /// Executes the next instruction
-    inline fn nextInstr(self: *VM) Error!void {
-        const op: byte.Opcode = @enumFromInt(try self.nextByte());
+    inline fn nextInstr(self: *VM) void {
+        const op: byte.Opcode = @enumFromInt(self.nextByte());
         switch (op) {
-            .CONSTANT => try self.opConstant(),
-            .VAR_SET => try self.opVarSet(),
-            .VAR_GET => try self.opVarGet(),
-            .STACK_ALLOC => try self.opStackAlloc(),
-            .ADD => try self.opAdd(),
-            .SUB => try self.opSub(),
-            .MUL => try self.opMul(),
-            .DIV => try self.opDiv(),
-            .MOD => try self.opMod(),
-            .CALL => try self.opCall(),
-            .RETURN => try self.opReturn(),
-            .CALL_BUILTIN => try self.opCallBuiltin(),
-            .NEGATE => try self.opNegate(),
-            .EQUAL => try self.opEqual(),
-            .GREATER_THAN => try self.opGreaterThan(),
-            .GREATER_THAN_EQUALS => try self.opGreaterThanEquals(),
-            .AND => try self.opAnd(),
-            .OR => try self.opOr(),
-            .BRANCH_NEQ => try self.opBranchNEQ(),
-            .JUMP => try self.opJump(),
-            .ARRAY_INIT => try self.opArrayInit(),
-            .ARRAY_PUSH => try self.opArrayPush(),
-            .ARRAY_GET => try self.opArrayGet(),
-            .ARRAY_SET => try self.opArraySet(),
+            .CONSTANT => self.opConstant(),
+            .VAR_SET => self.opVarSet(),
+            .VAR_GET => self.opVarGet(),
+            .STACK_ALLOC => self.opStackAlloc(),
+            .ADD => self.opAdd(),
+            .SUB => self.opSub(),
+            .MUL => self.opMul(),
+            .DIV => self.opDiv(),
+            .MOD => self.opMod(),
+            .CALL => self.opCall(),
+            .RETURN => self.opReturn(),
+            .CALL_BUILTIN => self.opCallBuiltin(),
+            .NEGATE => self.opNegate(),
+            .EQUAL => self.opEqual(),
+            .GREATER_THAN => self.opGreaterThan(),
+            .GREATER_THAN_EQUALS => self.opGreaterThanEquals(),
+            .LESS_THAN => self.opLessThan(),
+            .LESS_THAN_EQUALS => self.opLessThanEquals(),
+            .AND => self.opAnd(),
+            .OR => self.opOr(),
+            .BRANCH_NEQ => self.opBranchNEQ(),
+            .JUMP => self.opJump(),
+            .ARRAY_INIT => self.opArrayInit(),
+            .ARRAY_PUSH => self.opArrayPush(),
+            .ARRAY_GET => self.opArrayGet(),
+            .ARRAY_SET => self.opArraySet(),
         }
     }
 
-    inline fn opConstant(self: *VM) Error!void {
-        const index = try self.nextByte();
+    inline fn opConstant(self: *VM) void {
+        const index = self.nextByte();
         if (index >= self.constants.len) {
-            return Error.InvalidConstant;
+            @setCold(true);
+            errorHandle(Error.InvalidConstant);
+            return;
         }
-        const constant = try self.constants[index].dupe(self.allocator);
+        const constant = self.constants[index].dupe(self.allocator) catch |err| { 
+            @setCold(true);
+            errorHandle(err);
+            return; 
+        };
         switch (constant.data) {
             .object => |obj| {
                 self.garbage_collector.linkObject(obj);
             },
             else => {},
         }
-        try self.eval_stack.push(constant);
+        self.eval_stack.push(constant);
     }
 
-    inline fn opVarSet(self: *VM) Error!void {
-        const offset = try self.nextByte();
-        const frame = try self.call_stack.peek();
-        const value_ptr = try self.eval_stack.peekFrameOffset(frame.stack_offset, offset);
-        const new_value = try self.eval_stack.pop();
+    inline fn opVarSet(self: *VM) void {
+        const offset = self.nextByte();
+        const frame = self.call_stack.peek();
+        const value_ptr = self.eval_stack.peekFrameOffset(frame.stack_offset, offset);
+        const new_value = self.eval_stack.pop();
         value_ptr.* = new_value;
     }
 
-    inline fn opVarGet(self: *VM) Error!void {
-        const offset = try self.nextByte();
-        const frame = try self.call_stack.peek();
-        const value_ptr = try self.eval_stack.peekFrameOffset(frame.stack_offset, offset);
-        try self.eval_stack.push(value_ptr.*);
+    inline fn opVarGet(self: *VM) void {
+        const offset = self.nextByte();
+        const frame = self.call_stack.peek();
+        const value_ptr = self.eval_stack.peekFrameOffset(frame.stack_offset, offset);
+        self.eval_stack.push(value_ptr.*);
     }
 
-    inline fn opStackAlloc(self: *VM) Error!void {
-        const amount = try self.nextByte();
+    inline fn opStackAlloc(self: *VM) void {
+        const amount = self.nextByte();
         for (0..amount) |_| {
-            try self.eval_stack.push(undefined);
+            self.eval_stack.push(undefined);
         }
     }
 
-    inline fn opAdd(self: *VM) Error!void {
-        const rhs = try self.eval_stack.pop();
-        const lhs = try self.eval_stack.pop();
-        try self.eval_stack.push(.{
+    inline fn opAdd(self: *VM) void {
+        const lhs = self.eval_stack.pop();
+        const rhs = self.eval_stack.pop();
+        self.eval_stack.push(.{
             .data = .{
                 .number = lhs.data.number + rhs.data.number,
             },
         });
     }
 
-    inline fn opSub(self: *VM) Error!void {
-        const rhs = try self.eval_stack.pop();
-        const lhs = try self.eval_stack.pop();
-        try self.eval_stack.push(.{
+    inline fn opSub(self: *VM) void {
+        const lhs = self.eval_stack.pop();
+        const rhs = self.eval_stack.pop();
+        self.eval_stack.push(.{
             .data = .{
                 .number = lhs.data.number - rhs.data.number,
             },
         });
     }
 
-    inline fn opMul(self: *VM) Error!void {
-        const rhs = try self.eval_stack.pop();
-        const lhs = try self.eval_stack.pop();
-        try self.eval_stack.push(.{
+    inline fn opMul(self: *VM) void {
+        const lhs = self.eval_stack.pop();
+        const rhs = self.eval_stack.pop();
+        self.eval_stack.push(.{
             .data = .{
                 .number = lhs.data.number * rhs.data.number,
             },
         });
     }
 
-    inline fn opDiv(self: *VM) Error!void {
-        const rhs = try self.eval_stack.pop();
-        const lhs = try self.eval_stack.pop();
-        try self.eval_stack.push(.{
+    inline fn opDiv(self: *VM) void {
+        const lhs = self.eval_stack.pop();
+        const rhs = self.eval_stack.pop();
+        self.eval_stack.push(.{
             .data = .{
                 .number = lhs.data.number / rhs.data.number,
             },
         });
     }
 
-    inline fn opMod(self: *VM) Error!void {
-        const rhs = try self.eval_stack.pop();
-        const lhs = try self.eval_stack.pop();
-        try self.eval_stack.push(.{
+    inline fn opMod(self: *VM) void {
+        const lhs = self.eval_stack.pop();
+        const rhs = self.eval_stack.pop();
+        self.eval_stack.push(.{
             .data = .{
                 .number = @mod(lhs.data.number, rhs.data.number),
             },
         });
     }
 
-    inline fn opCall(self: *VM) Error!void {
-        const arg_count = try self.nextByte();
-        const func = try self.eval_stack.pop();
+    inline fn opCall(self: *VM) void {
+        const arg_count = self.nextByte();
+        const func = self.eval_stack.pop();
         const frame = CallFrame{
             .func = self.current_func,
             .index = self.pc,
             .stack_offset = self.eval_stack.head - arg_count,
         };
-        try self.call_stack.push(frame);
+        self.call_stack.push(frame);
         self.current_func = func.data.func;
         self.pc = 0;
     }
 
-    inline fn opReturn(self: *VM) Error!void {
-        const is_return = (try self.nextByte()) != 0;
-        const call_frame = try self.call_stack.pop();
+    inline fn opReturn(self: *VM) void {
+        const is_return = self.nextByte() != 0;
+        const call_frame = self.call_stack.pop();
         if (call_frame.root) {
+            @setCold(true);
             return;
         }
         self.current_func = call_frame.func;
         self.pc = call_frame.index;
 
         if (is_return) {
-            const ret = try self.eval_stack.pop();
-            try self.eval_stack.popFrame(call_frame.stack_offset);
-            try self.eval_stack.push(ret);
+            const ret = self.eval_stack.pop();
+            self.eval_stack.popFrame(call_frame.stack_offset);
+            self.eval_stack.push(ret);
         } else {
-            try self.eval_stack.popFrame(call_frame.stack_offset);
+            self.eval_stack.popFrame(call_frame.stack_offset);
         }
     }
 
-    inline fn opCallBuiltin(self: *VM) Error!void {
-        const idx = try self.nextByte();
+    inline fn opCallBuiltin(self: *VM) void {
+        const idx = self.nextByte();
         switch (idx) {
-            0 => try self.builtinPrint(),
-            1 => try self.builtinToString(),
-            2 => try self.builtinLength(),
+            0 => self.builtinPrint(),
+            1 => self.builtinToString(),
+            2 => self.builtinLength(),
             else => unreachable,
         }
     }
 
-    inline fn opNegate(self: *VM) Error!void {
-        const item = try self.eval_stack.pop();
-        try self.eval_stack.push(value.Value{ .data = .{ .boolean = !item.data.boolean } });
+    inline fn opNegate(self: *VM) void {
+        const item = self.eval_stack.pop();
+        self.eval_stack.push(value.Value{ .data = .{ .boolean = !item.data.boolean } });
     }
 
-    inline fn opEqual(self: *VM) Error!void {
-        const lhs = try self.eval_stack.pop();
-        const rhs = try self.eval_stack.pop();
-        try self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.equals(rhs) } });
+    inline fn opEqual(self: *VM) void {
+        const lhs = self.eval_stack.pop();
+        const rhs = self.eval_stack.pop();
+        self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.equals(rhs) } });
     }
 
-    inline fn opGreaterThan(self: *VM) Error!void {
-        const lhs = try self.eval_stack.pop();
-        const rhs = try self.eval_stack.pop();
-        try self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.number > rhs.data.number } });
+    inline fn opGreaterThan(self: *VM) void {
+        const lhs = self.eval_stack.pop();
+        const rhs = self.eval_stack.pop();
+        self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.number > rhs.data.number } });
     }
 
-    inline fn opGreaterThanEquals(self: *VM) Error!void {
-        const lhs = try self.eval_stack.pop();
-        const rhs = try self.eval_stack.pop();
-        try self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.number >= rhs.data.number } });
+    inline fn opGreaterThanEquals(self: *VM) void {
+        const lhs = self.eval_stack.pop();
+        const rhs = self.eval_stack.pop();
+        self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.number >= rhs.data.number } });
     }
 
-    inline fn opAnd(self: *VM) Error!void {
-        const lhs = try self.eval_stack.pop();
-        const rhs = try self.eval_stack.pop();
-        try self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.boolean and rhs.data.boolean } });
+    inline fn opLessThan(self: *VM) void {
+        const lhs = self.eval_stack.pop();
+        const rhs = self.eval_stack.pop();
+        self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.number < rhs.data.number } });
     }
 
-    inline fn opOr(self: *VM) Error!void {
-        const lhs = try self.eval_stack.pop();
-        const rhs = try self.eval_stack.pop();
-        try self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.boolean or rhs.data.boolean } });
+    inline fn opLessThanEquals(self: *VM) void {
+        const lhs = self.eval_stack.pop();
+        const rhs = self.eval_stack.pop();
+        self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.number <= rhs.data.number } });
     }
 
-    inline fn opBranchNEQ(self: *VM) Error!void {
-        const offset = try self.nextByte();
-        const item = try self.eval_stack.pop();
+    inline fn opAnd(self: *VM) void {
+        const lhs = self.eval_stack.pop();
+        const rhs = self.eval_stack.pop();
+        self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.boolean and rhs.data.boolean } });
+    }
+
+    inline fn opOr(self: *VM) void {
+        const lhs = self.eval_stack.pop();
+        const rhs = self.eval_stack.pop();
+        self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.boolean or rhs.data.boolean } });
+    }
+
+    inline fn opBranchNEQ(self: *VM) void {
+        const offset = self.nextByte();
+        const item = self.eval_stack.pop();
         if (!item.data.boolean) {
             self.pc += offset;
         }
     }
 
-    inline fn opJump(self: *VM) Error!void {
-        const offset = try self.nextByte();
+    inline fn opJump(self: *VM) void {
+        const offset = self.nextByte();
         self.pc += offset;
     }
 
-    inline fn opArrayInit(self: *VM) Error!void {
-        const items = try self.nextByte();
-        var array = try std.ArrayListUnmanaged(value.Value).initCapacity(self.allocator, @intCast(items));
+    inline fn opArrayInit(self: *VM) void {
+        const items = self.nextByte();
+        var array = std.ArrayListUnmanaged(value.Value).initCapacity(self.allocator, @intCast(items)) catch { return; };
         for (0..items) |_| {
-            try array.append(self.allocator, try self.eval_stack.pop());
+            array.append(self.allocator, self.eval_stack.pop()) catch |err| {
+                @setCold(true);
+                errorHandle(err);
+                unreachable;
+            };
         }
-        const obj = try self.garbage_collector.newObject();
+        const obj = self.garbage_collector.newObject();
         obj.* = .{
             .data = .{
                 .array = .{
@@ -285,58 +317,66 @@ pub const VM = struct {
                 },
             },
         };
-        try self.eval_stack.push(value.Value{ .data = .{ .object = obj } });
+        self.eval_stack.push(value.Value{ .data = .{ .object = obj } });
     }
 
-    inline fn opArrayPush(self: *VM) Error!void {
-        const array_obj = try self.eval_stack.pop();
+    inline fn opArrayPush(self: *VM) void {
+        const array_obj = self.eval_stack.pop();
         var array = &array_obj.data.object.data.array.items;
-        const item = try self.eval_stack.pop();
-        try array.append(self.allocator, item);
+        const item = self.eval_stack.pop();
+        array.append(self.allocator, item) catch |err| {
+            @setCold(true);
+            errorHandle(err);
+            unreachable;
+        };
     }
 
-    inline fn opArrayGet(self: *VM) Error!void {
-        const array_obj = try self.eval_stack.pop();
+    inline fn opArrayGet(self: *VM) void {
+        const array_obj = self.eval_stack.pop();
         const array = &array_obj.data.object.data.array.items;
-        const index_value = try self.eval_stack.pop();
+        const index_value = self.eval_stack.pop();
         const index: usize = @intFromFloat(@trunc(index_value.data.number));
         if (array.items.len <= index) {
-            return Error.ArrayOutOfBounds;
+            @setCold(true);
+            errorHandle(Error.ArrayOutOfBounds);
+            return;
         }
-        try self.eval_stack.push(array.items[index]);
+        self.eval_stack.push(array.items[index]);
     }
 
-    inline fn opArraySet(self: *VM) Error!void {
-        const array_obj = try self.eval_stack.pop();
+    inline fn opArraySet(self: *VM) void {
+        const array_obj = self.eval_stack.pop();
         var array = &array_obj.data.object.data.array.items;
-        const index_value = try self.eval_stack.pop();
+        const index_value = self.eval_stack.pop();
         const index: usize = @intFromFloat(@trunc(index_value.data.number));
-        const item = try self.eval_stack.pop();
+        const item = self.eval_stack.pop();
         if (array.items.len <= index) {
-            return Error.ArrayOutOfBounds;
+            @setCold(true);
+            errorHandle(Error.ArrayOutOfBounds);
+            return;
         }
         array.items[index] = item;
     }
 
-    inline fn builtinPrint(self: *VM) Error!void {
-        const item = try self.eval_stack.pop();
+    inline fn builtinPrint(self: *VM) void {
+        const item = self.eval_stack.pop();
         std.debug.print("{any}\n", .{item});
     }
 
-    inline fn builtinToString(self: *VM) Error!void {
-        const item = try self.eval_stack.pop();
-        const raw = try std.fmt.allocPrint(self.allocator, "{any}", .{item});
-        const object = try self.garbage_collector.newObject();
+    inline fn builtinToString(self: *VM) void {
+        const item = self.eval_stack.pop();
+        const raw = std.fmt.allocPrint(self.allocator, "{any}", .{item}) catch { return;};
+        const object = self.garbage_collector.newObject();
         object.data = .{
             .string = .{
                 .raw = raw,
             },
         };
-        try self.eval_stack.push(value.Value{ .data = .{ .object = object } });
+        self.eval_stack.push(value.Value{ .data = .{ .object = object } });
     }
 
-    inline fn builtinLength(self: *VM) Error!void {
-        const item = try self.eval_stack.pop();
+    inline fn builtinLength(self: *VM) void {
+        const item = self.eval_stack.pop();
         const len = switch (item.data) {
             .object => |obj| blk: {
                 switch (obj.data) {
@@ -346,13 +386,14 @@ pub const VM = struct {
             },
             else => unreachable,
         };
-        try self.eval_stack.push(value.Value{ .data = .{ .number = @floatFromInt(len) } });
+        self.eval_stack.push(value.Value{ .data = .{ .number = @floatFromInt(len) } });
     }
 
     /// Fetches the next byte and errors if there isn't one
-    inline fn nextByte(self: *VM) Error!u8 {
+    inline fn nextByte(self: *VM) u8 {
         if (self.pc >= self.bytes[self.current_func].len) {
-            return Error.MalformedInstruction;
+            @setCold(true);
+            errorHandle(Error.MalformedInstruction);
         }
         const ret = self.bytes[self.current_func][self.pc];
         self.pc += 1;

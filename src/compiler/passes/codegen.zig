@@ -112,22 +112,12 @@ pub const Pass = struct {
                     },
                     .greater_than => .GREATER_THAN,
                     .greater_than_equals => .GREATER_THAN_EQUALS,
-                    .less_than => {
-                        try self.genNode(binary.rhs);
-                        try self.genNode(binary.lhs);
-                        try self.pushOp(.GREATER_THAN_EQUALS);
-                        return;
-                    },
-                    .less_than_equals => {
-                        try self.genNode(binary.rhs);
-                        try self.genNode(binary.lhs);
-                        try self.pushOp(.GREATER_THAN);
-                        return;
-                    },
+                    .less_than => .LESS_THAN,
+                    .less_than_equals => .LESS_THAN_EQUALS,
                     else => unreachable,
                 };
-                try self.genNode(binary.lhs);
                 try self.genNode(binary.rhs);
+                try self.genNode(binary.lhs);
                 try self.pushOp(op);
             },
             .unary_op => |*unary| {
