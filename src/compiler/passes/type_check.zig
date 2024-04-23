@@ -169,10 +169,21 @@ pub const Pass = struct {
                     const arg = call.args[i];
                     const arg_type = try self.typeCheck(arg);
                     if (data.arg_types) |arg_types| {
-                        const correct_type = if (data.deep_check_types)
-                            arg_type.equal(&arg_types[i])
-                        else
-                            @intFromEnum(arg_types[i]) == @intFromEnum(arg_type);
+                        const correct_type = if (data.deep_check_types) blk: {
+                            for (arg_types[i]) |*this_arg| {
+                                if (arg_type.equal(this_arg)) {
+                                    break :blk true;
+                                }
+                            }
+                            break :blk false;
+                        } else blk: {
+                            for (arg_types[i]) |this_arg| {
+                                if (@intFromEnum(this_arg) == @intFromEnum(arg_type)) {
+                                    break :blk true;
+                                }
+                            }
+                            break :blk false;
+                        };
                         if (!correct_type) {
                             try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in builtin function call, found type \"{any}\"", .{ arg_types[i], arg_type }, arg.index);
                             return Error.MismatchedTypes;

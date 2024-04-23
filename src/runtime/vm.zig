@@ -336,8 +336,17 @@ pub const VM = struct {
     }
 
     inline fn builtinLength(self: *VM) Error!void {
-        const array = try self.eval_stack.pop();
-        try self.eval_stack.push(value.Value{ .data = .{ .number = @floatFromInt(array.data.object.data.array.items.items.len) } });
+        const item = try self.eval_stack.pop();
+        const len = switch (item.data) {
+            .object => |obj| blk: {
+                switch (obj.data) {
+                    .string => |string| break :blk string.raw.len,
+                    .array => |array| break :blk array.items.items.len,
+                }
+            },
+            else => unreachable,
+        };
+        try self.eval_stack.push(value.Value{ .data = .{ .number = @floatFromInt(len) } });
     }
 
     /// Fetches the next byte and errors if there isn't one
