@@ -9,8 +9,8 @@ pub fn build(b: *std.Build) void {
         .root_source_file = .{ .path = "src/main.zig" },
         .target = target,
         .optimize = optimize,
-        //.use_llvm = false, 
-        //.use_lld = false,
+        .use_llvm = true, 
+        .use_lld = true,
     });
 
     b.installArtifact(exe);

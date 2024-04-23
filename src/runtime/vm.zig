@@ -53,7 +53,7 @@ pub const VM = struct {
     }
 
     /// Runs VM
-    pub fn run(self: *VM) Error!void {
+    pub inline fn run(self: *VM) Error!void {
         while (self.pc < self.bytes[self.current_func].len) {
             try self.nextInstr();
         }
@@ -65,7 +65,7 @@ pub const VM = struct {
     }
 
     /// Executes the next instruction
-    fn nextInstr(self: *VM) Error!void {
+    inline fn nextInstr(self: *VM) Error!void {
         const op: byte.Opcode = @enumFromInt(try self.nextByte());
         switch (op) {
             .CONSTANT => try self.opConstant(),
@@ -92,7 +92,7 @@ pub const VM = struct {
         }
     }
 
-    fn opConstant(self: *VM) Error!void {
+    inline fn opConstant(self: *VM) Error!void {
         const index = try self.nextByte();
         if (index >= self.constants.len) {
             return Error.InvalidConstant;
@@ -107,7 +107,7 @@ pub const VM = struct {
         try self.eval_stack.push(constant);
     }
 
-    fn opVarSet(self: *VM) Error!void {
+    inline fn opVarSet(self: *VM) Error!void {
         const offset = try self.nextByte();
         const frame = try self.call_stack.peek();
         const value_ptr = try self.eval_stack.peekFrameOffset(frame.stack_offset, offset);
@@ -115,21 +115,21 @@ pub const VM = struct {
         value_ptr.* = new_value;
     }
 
-    fn opVarGet(self: *VM) Error!void {
+    inline fn opVarGet(self: *VM) Error!void {
         const offset = try self.nextByte();
         const frame = try self.call_stack.peek();
         const value_ptr = try self.eval_stack.peekFrameOffset(frame.stack_offset, offset);
         try self.eval_stack.push(value_ptr.*);
     }
 
-    fn opStackAlloc(self: *VM) Error!void {
+    inline fn opStackAlloc(self: *VM) Error!void {
         const amount = try self.nextByte();
         for (0..amount) |_| {
             try self.eval_stack.push(undefined);
         }
     }
 
-    fn opAdd(self: *VM) Error!void {
+    inline fn opAdd(self: *VM) Error!void {
         const rhs = try self.eval_stack.pop();
         const lhs = try self.eval_stack.pop();
         try self.eval_stack.push(.{
@@ -139,7 +139,7 @@ pub const VM = struct {
         });
     }
 
-    fn opSub(self: *VM) Error!void {
+    inline fn opSub(self: *VM) Error!void {
         const rhs = try self.eval_stack.pop();
         const lhs = try self.eval_stack.pop();
         try self.eval_stack.push(.{
@@ -149,7 +149,7 @@ pub const VM = struct {
         });
     }
 
-    fn opMul(self: *VM) Error!void {
+    inline fn opMul(self: *VM) Error!void {
         const rhs = try self.eval_stack.pop();
         const lhs = try self.eval_stack.pop();
         try self.eval_stack.push(.{
@@ -159,7 +159,7 @@ pub const VM = struct {
         });
     }
 
-    fn opDiv(self: *VM) Error!void {
+    inline fn opDiv(self: *VM) Error!void {
         const rhs = try self.eval_stack.pop();
         const lhs = try self.eval_stack.pop();
         try self.eval_stack.push(.{
@@ -169,7 +169,7 @@ pub const VM = struct {
         });
     }
 
-    fn opCall(self: *VM) Error!void {
+    inline fn opCall(self: *VM) Error!void {
         const arg_count = try self.nextByte();
         const func = try self.eval_stack.pop();
         const frame = CallFrame{
@@ -182,7 +182,7 @@ pub const VM = struct {
         self.pc = 0;
     }
 
-    fn opReturn(self: *VM) Error!void {
+    inline fn opReturn(self: *VM) Error!void {
         const is_return = (try self.nextByte()) != 0;
         const call_frame = try self.call_stack.pop();
         if (call_frame.root) {
@@ -200,7 +200,7 @@ pub const VM = struct {
         }
     }
 
-    fn opCallBuiltin(self: *VM) Error!void {
+    inline fn opCallBuiltin(self: *VM) Error!void {
         const idx = try self.nextByte();
         switch (idx) {
             0 => try self.builtinPrint(),
@@ -209,30 +209,30 @@ pub const VM = struct {
         }
     }
 
-    fn opNegate(self: *VM) Error!void {
+    inline fn opNegate(self: *VM) Error!void {
         const item = try self.eval_stack.pop();
         try self.eval_stack.push(value.Value{ .data = .{ .boolean = !item.data.boolean } });
     }
 
-    fn opEqual(self: *VM) Error!void {
+    inline fn opEqual(self: *VM) Error!void {
         const lhs = try self.eval_stack.pop();
         const rhs = try self.eval_stack.pop();
         try self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.equals(rhs) } });
     }
 
-    fn opAnd(self: *VM) Error!void {
+    inline fn opAnd(self: *VM) Error!void {
         const lhs = try self.eval_stack.pop();
         const rhs = try self.eval_stack.pop();
         try self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.boolean and rhs.data.boolean } });
     }
 
-    fn opOr(self: *VM) Error!void {
+    inline fn opOr(self: *VM) Error!void {
         const lhs = try self.eval_stack.pop();
         const rhs = try self.eval_stack.pop();
         try self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.boolean or rhs.data.boolean } });
     }
 
-    fn opBranchNEQ(self: *VM) Error!void {
+    inline fn opBranchNEQ(self: *VM) Error!void {
         const offset = try self.nextByte();
         const item = try self.eval_stack.pop();
         if (!item.data.boolean) {
@@ -240,12 +240,12 @@ pub const VM = struct {
         }
     }
 
-    fn opJump(self: *VM) Error!void {
+    inline fn opJump(self: *VM) Error!void {
         const offset = try self.nextByte();
         self.pc += offset;
     }
 
-    fn opArrayInit(self: *VM) Error!void {
+    inline fn opArrayInit(self: *VM) Error!void {
         const items = try self.nextByte();
         var array = try std.ArrayListUnmanaged(value.Value).initCapacity(self.allocator, @intCast(items));
         for (0..items) |_| {
@@ -262,14 +262,14 @@ pub const VM = struct {
         try self.eval_stack.push(value.Value{ .data = .{ .object = obj } });
     }
 
-    fn opArrayPush(self: *VM) Error!void {
+    inline fn opArrayPush(self: *VM) Error!void {
         const array_obj = try self.eval_stack.pop();
         var array = &array_obj.data.object.data.array.items;
         const item = try self.eval_stack.pop();
         try array.append(self.allocator, item);
     }
 
-    fn opArrayGet(self: *VM) Error!void {
+    inline fn opArrayGet(self: *VM) Error!void {
         const array_obj = try self.eval_stack.pop();
         const array = &array_obj.data.object.data.array.items;
         const index_value = try self.eval_stack.pop();
@@ -280,7 +280,7 @@ pub const VM = struct {
         try self.eval_stack.push(array.items[index]);
     }
 
-    fn opArraySet(self: *VM) Error!void {
+    inline fn opArraySet(self: *VM) Error!void {
         const array_obj = try self.eval_stack.pop();
         var array = &array_obj.data.object.data.array.items;
         const index_value = try self.eval_stack.pop();
@@ -292,12 +292,12 @@ pub const VM = struct {
         array.items[index] = item;
     }
 
-    fn builtinPrint(self: *VM) Error!void {
+    inline fn builtinPrint(self: *VM) Error!void {
         const item = try self.eval_stack.pop();
         std.debug.print("{any}\n", .{item});
     }
 
-    fn builtinToString(self: *VM) Error!void {
+    inline fn builtinToString(self: *VM) Error!void {
         const item = try self.eval_stack.pop();
         const raw = try std.fmt.allocPrint(self.allocator, "{any}", .{item});
         const object = try self.garbage_collector.newObject();
@@ -310,7 +310,7 @@ pub const VM = struct {
     }
 
     /// Fetches the next byte and errors if there isn't one
-    fn nextByte(self: *VM) Error!u8 {
+    inline fn nextByte(self: *VM) Error!u8 {
         if (self.pc >= self.bytes[self.current_func].len) {
             return Error.MalformedInstruction;
         }

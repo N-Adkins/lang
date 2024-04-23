@@ -27,24 +27,24 @@ pub fn Stack(comptime T: type) type {
             allocator.free(self.items);
         }
 
-        pub fn getFrame(self: *Self) usize {
+        pub inline fn getFrame(self: *Self) usize {
             return self.head;
         }
 
-        pub fn popFrame(self: *Self, frame: usize) Error!void {
+        pub inline fn popFrame(self: *Self, frame: usize) Error!void {
             while (self.head > frame) {
                 _ = try self.pop();
             }
         }
 
-        pub fn peekFrameOffset(self: *Self, frame: usize, offset: usize) Error!*T {
+        pub inline fn peekFrameOffset(self: *Self, frame: usize, offset: usize) Error!*T {
             if (frame +% offset > self.head) {
                 return Error.Overflow;
             }
             return &self.items[frame + offset];
         }
 
-        pub fn push(self: *Self, item: T) Error!void {
+        pub inline fn push(self: *Self, item: T) Error!void {
             if (self.head >= self.items.len) {
                 return Error.Overflow;
             }
@@ -52,7 +52,7 @@ pub fn Stack(comptime T: type) type {
             self.head += 1;
         }
 
-        pub fn pop(self: *Self) Error!T {
+        pub inline fn pop(self: *Self) Error!T {
             if (self.head < self.head -% 1) {
                 return Error.Underflow;
             }
@@ -60,7 +60,7 @@ pub fn Stack(comptime T: type) type {
             return self.items[self.head];
         }
 
-        pub fn peek(self: *Self) Error!*T {
+        pub inline fn peek(self: *Self) Error!*T {
             if (self.head < self.head -% 1) {
                 return Error.Underflow;
             }
