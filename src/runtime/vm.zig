@@ -111,10 +111,10 @@ pub const VM = struct {
             errorHandle(Error.InvalidConstant);
             return;
         }
-        const constant = self.constants[index].dupe(self.allocator) catch |err| { 
+        const constant = self.constants[index].dupe(self.allocator) catch |err| {
             @setCold(true);
             errorHandle(err);
-            return; 
+            return;
         };
         switch (constant.data) {
             .object => |obj| {
@@ -301,7 +301,9 @@ pub const VM = struct {
 
     inline fn opArrayInit(self: *VM) void {
         const items = self.nextByte();
-        var array = std.ArrayListUnmanaged(value.Value).initCapacity(self.allocator, @intCast(items)) catch { return; };
+        var array = std.ArrayListUnmanaged(value.Value).initCapacity(self.allocator, @intCast(items)) catch {
+            return;
+        };
         for (0..items) |_| {
             array.append(self.allocator, self.eval_stack.pop()) catch |err| {
                 @setCold(true);
@@ -365,7 +367,9 @@ pub const VM = struct {
 
     inline fn builtinToString(self: *VM) void {
         const item = self.eval_stack.pop();
-        const raw = std.fmt.allocPrint(self.allocator, "{any}", .{item}) catch { return;};
+        const raw = std.fmt.allocPrint(self.allocator, "{any}", .{item}) catch {
+            return;
+        };
         const object = self.garbage_collector.newObject();
         object.data = .{
             .string = .{
