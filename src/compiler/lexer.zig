@@ -40,6 +40,7 @@ pub const TokenTag = enum {
     greater_than_equals,
     keyword_var,
     keyword_if,
+    keyword_while,
     keyword_else,
     keyword_fn,
     keyword_return,
@@ -53,6 +54,7 @@ pub const TokenTag = enum {
 const keyword_lookup = std.ComptimeStringMap(TokenTag, .{
     .{ "var", TokenTag.keyword_var },
     .{ "if", TokenTag.keyword_if },
+    .{ "while", TokenTag.keyword_while },
     .{ "else", TokenTag.keyword_else },
     .{ "fn", TokenTag.keyword_fn },
     .{ "return", TokenTag.keyword_return },

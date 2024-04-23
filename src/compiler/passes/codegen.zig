@@ -183,6 +183,21 @@ pub const Pass = struct {
                 try self.pushOp(.VAR_SET);
                 try self.pushByte(index);
             },
+            .while_loop => |*while_loop| {
+                const frame = &self.func_stack.first.?.data;
+                const func = &self.bytecode.items[frame.func].code;
+                const before_condition = func.items.len;
+                try self.genNode(while_loop.expr);
+                try self.pushOp(.BRANCH_NEQ);
+                const branch_byte = func.items.len;
+                try self.pushByte(0); // placeholder
+                try self.genNode(while_loop.body);
+                const after_body = func.items.len;
+                const distance: u8 = @as(u8, @truncate(after_body - before_condition)) + 2;
+                func.items[branch_byte] = distance;
+                try self.pushOp(.JUMP_BACK);
+                try self.pushByte(distance);
+            },
             .array_set => |*array_set| {
                 try self.genNode(array_set.expr);
                 try self.genNode(array_set.index);

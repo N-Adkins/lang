@@ -451,6 +451,10 @@ pub const Parser = struct {
 
         var needs_semicolon = true;
         const statement = switch (self.previous.?.tag) {
+            .keyword_while => blk: {
+                needs_semicolon = false;
+                break :blk try self.parseWhileLoop();
+            },
             .keyword_var => try self.parseVarDecl(),
             .identifier => blk: {
                 if (self.current) |current| {
@@ -508,6 +512,25 @@ pub const Parser = struct {
         }
 
         return statement;
+    }
+
+    fn parseWhileLoop(self: *Parser) Error!*ast.Node {
+        const start = try self.expectToken(.keyword_while);
+        _ = try self.expectToken(.l_paren);
+        const expr = try self.parseExpression();
+        _ = try self.expectToken(.r_paren);
+        const body = try self.parseBlock();
+        const node = try self.allocator.create(ast.Node);
+        node.* = .{
+            .index = start.start,
+            .data = .{
+                .while_loop = .{
+                    .expr = expr,
+                    .body = body,
+                },
+            },
+        };
+        return node;
     }
 
     fn parseVarDecl(self: *Parser) Error!*ast.Node {

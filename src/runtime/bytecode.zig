@@ -25,6 +25,7 @@ pub const Opcode = enum(u8) {
     OR, // pops 2 values off of stack, assumes boolean, pushes boolean after comparing
     BRANCH_NEQ, // u8 offset, pops value off of stack, if false then jump to offset, otherwise nothing
     JUMP, // u8 offset
+    JUMP_BACK, // u8 offset
     ARRAY_INIT, // u8 item count, pops item count number of items off of stack and pushes initialized array
     ARRAY_PUSH, // pops two values off of stack, first is array second is item, pushes item to end of array
     ARRAY_GET, // pops two values off of stack, first is array, second is index, pushes indexed value or errors if out of bounds
@@ -114,6 +115,10 @@ pub fn dumpBytecode(funcs: [][]const u8) void {
                     i += 1;
                 },
                 .JUMP => {
+                    std.debug.print("0x{X:0>2}\n", .{bytes[i]});
+                    i += 1;
+                },
+                .JUMP_BACK => {
                     std.debug.print("0x{X:0>2}\n", .{bytes[i]});
                     i += 1;
                 },

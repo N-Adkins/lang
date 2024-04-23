@@ -97,6 +97,7 @@ pub const VM = struct {
             .OR => self.opOr(),
             .BRANCH_NEQ => self.opBranchNEQ(),
             .JUMP => self.opJump(),
+            .JUMP_BACK => self.opJumpBack(),
             .ARRAY_INIT => self.opArrayInit(),
             .ARRAY_PUSH => self.opArrayPush(),
             .ARRAY_GET => self.opArrayGet(),
@@ -294,6 +295,11 @@ pub const VM = struct {
     inline fn opJump(self: *VM) void {
         const offset = self.nextByte();
         self.pc += offset;
+    }
+
+    inline fn opJumpBack(self: *VM) void {
+        const offset = self.nextByte();
+        self.pc -= offset;
     }
 
     inline fn opArrayInit(self: *VM) void {

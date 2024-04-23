@@ -213,6 +213,10 @@ pub const Pass = struct {
                 try self.populateNode(var_decl.expr);
             },
             .var_assign => |*var_assign| try self.populateNode(var_assign.expr),
+            .while_loop => |*while_loop| {
+                try self.populateNode(while_loop.expr);
+                try self.populateNode(while_loop.body);
+            },
             .array_set => |*array_set| {
                 try self.populateNode(array_set.index);
                 try self.populateNode(array_set.expr);

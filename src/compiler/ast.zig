@@ -49,6 +49,7 @@ pub const Node = struct {
         block: Block,
         var_decl: VarDecl,
         var_assign: VarAssign,
+        while_loop: WhileLoop,
         array_set: ArraySet,
         if_stmt: IfStatement,
         return_stmt: ReturnStatement,
@@ -111,6 +112,11 @@ pub const Node = struct {
     const VarAssign = struct {
         name: []u8,
         expr: *Node,
+    };
+
+    const WhileLoop = struct {
+        expr: *Node,
+        body: *Node,
     };
 
     const ArraySet = struct {

@@ -242,6 +242,16 @@ pub const Pass = struct {
                 }
                 return .void;
             },
+            .while_loop => |*while_loop| {
+                const bool_type: types.Type = .boolean;
+                const expr_type = try self.typeCheck(while_loop.expr);
+                if (!expr_type.equal(&bool_type)) {
+                    try self.err_ctx.newError(.mismatched_types, "Expected boolean in while loop expression, found type {any}", .{expr_type}, while_loop.expr.index);
+                    return Error.MismatchedTypes;
+                }
+                _ = try self.typeCheck(while_loop.body);
+                return .void;
+            },
             .array_set => |*array_set| {
                 const const_array_type: types.Type = .{ .array = undefined };
                 const const_num_type: types.Type = .number;
