@@ -107,14 +107,7 @@ pub const VM = struct {
 
     inline fn opConstant(self: *VM) void {
         const index = self.nextByte();
-        if (index >= self.constants.len) {
-            errorHandle(Error.InvalidConstant);
-            return;
-        }
-        const constant = self.constants[index].dupe(self.allocator) catch |err| {
-            errorHandle(err);
-            return;
-        };
+        const constant = self.constants[index].dupe(self.allocator);
         switch (constant.data) {
             .object => |obj| {
                 self.garbage_collector.linkObject(obj);
@@ -151,7 +144,7 @@ pub const VM = struct {
         const rhs = self.eval_stack.pop();
         self.eval_stack.push(.{
             .data = .{
-                .number = lhs.data.number + rhs.data.number,
+                .integer = lhs.data.integer + rhs.data.integer,
             },
         });
     }
@@ -161,7 +154,7 @@ pub const VM = struct {
         const rhs = self.eval_stack.pop();
         self.eval_stack.push(.{
             .data = .{
-                .number = lhs.data.number - rhs.data.number,
+                .integer = lhs.data.integer - rhs.data.integer,
             },
         });
     }
@@ -171,7 +164,7 @@ pub const VM = struct {
         const rhs = self.eval_stack.pop();
         self.eval_stack.push(.{
             .data = .{
-                .number = lhs.data.number * rhs.data.number,
+                .integer = lhs.data.integer * rhs.data.integer,
             },
         });
     }
@@ -181,7 +174,7 @@ pub const VM = struct {
         const rhs = self.eval_stack.pop();
         self.eval_stack.push(.{
             .data = .{
-                .number = lhs.data.number / rhs.data.number,
+                .integer = @divTrunc(lhs.data.integer, rhs.data.integer),
             },
         });
     }
@@ -191,7 +184,7 @@ pub const VM = struct {
         const rhs = self.eval_stack.pop();
         self.eval_stack.push(.{
             .data = .{
-                .number = @mod(lhs.data.number, rhs.data.number),
+                .integer = @mod(lhs.data.integer, rhs.data.integer),
             },
         });
     }
@@ -251,25 +244,25 @@ pub const VM = struct {
     inline fn opGreaterThan(self: *VM) void {
         const lhs = self.eval_stack.pop();
         const rhs = self.eval_stack.pop();
-        self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.number > rhs.data.number } });
+        self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.integer > rhs.data.integer } });
     }
 
     inline fn opGreaterThanEquals(self: *VM) void {
         const lhs = self.eval_stack.pop();
         const rhs = self.eval_stack.pop();
-        self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.number >= rhs.data.number } });
+        self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.integer >= rhs.data.integer } });
     }
 
     inline fn opLessThan(self: *VM) void {
         const lhs = self.eval_stack.pop();
         const rhs = self.eval_stack.pop();
-        self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.number < rhs.data.number } });
+        self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.integer < rhs.data.integer } });
     }
 
     inline fn opLessThanEquals(self: *VM) void {
         const lhs = self.eval_stack.pop();
         const rhs = self.eval_stack.pop();
-        self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.number <= rhs.data.number } });
+        self.eval_stack.push(value.Value{ .data = .{ .boolean = lhs.data.integer <= rhs.data.integer } });
     }
 
     inline fn opAnd(self: *VM) void {
@@ -304,15 +297,19 @@ pub const VM = struct {
 
     inline fn opArrayInit(self: *VM) void {
         const items = self.nextByte();
-        var array = std.ArrayListUnmanaged(value.Value).initCapacity(self.allocator, @intCast(items)) catch {
-            return;
+
+        var array = std.ArrayListUnmanaged(value.Value).initCapacity(self.allocator, @intCast(items)) catch |err| {
+            errorHandle(err);
+            unreachable;
         };
+
         for (0..items) |_| {
             array.append(self.allocator, self.eval_stack.pop()) catch |err| {
                 errorHandle(err);
                 unreachable;
             };
         }
+
         const obj = self.garbage_collector.newObject();
         obj.* = .{
             .data = .{
@@ -338,7 +335,7 @@ pub const VM = struct {
         const array_obj = self.eval_stack.pop();
         const array = &array_obj.data.object.data.array.items;
         const index_value = self.eval_stack.pop();
-        const index: usize = @intFromFloat(@trunc(index_value.data.number));
+        const index: usize = @intCast(index_value.data.integer);
         if (array.items.len <= index) {
             errorHandle(Error.ArrayOutOfBounds);
             return;
@@ -350,7 +347,7 @@ pub const VM = struct {
         const array_obj = self.eval_stack.pop();
         var array = &array_obj.data.object.data.array.items;
         const index_value = self.eval_stack.pop();
-        const index: usize = @intFromFloat(@trunc(index_value.data.number));
+        const index: usize = @intCast(index_value.data.integer);
         const item = self.eval_stack.pop();
         if (array.items.len <= index) {
             errorHandle(Error.ArrayOutOfBounds);
@@ -389,7 +386,7 @@ pub const VM = struct {
             },
             else => unreachable,
         };
-        self.eval_stack.push(value.Value{ .data = .{ .number = @floatFromInt(len) } });
+        self.eval_stack.push(value.Value{ .data = .{ .integer = @intCast(len) } });
     }
 
     /// Fetches the next byte and errors if there isn't one

@@ -37,7 +37,7 @@ pub const Node = struct {
     symbol_decl: ?*SymbolDecl = null,
     index: usize,
     data: union(enum) {
-        number_constant: NumberConstant,
+        int_constant: IntConstant,
         boolean_constant: BooleanConstant,
         string_constant: StringConstant,
         var_get: VarGet,
@@ -55,8 +55,8 @@ pub const Node = struct {
         return_stmt: ReturnStatement,
     },
 
-    const NumberConstant = struct {
-        value: f64,
+    const IntConstant = struct {
+        value: i64,
     };
 
     const BooleanConstant = struct {

@@ -77,7 +77,7 @@ fn runPasses(arena_allocator: std.mem.Allocator, gpa_allocator: std.mem.Allocato
     }
     const constants = try gpa_allocator.alloc(value.Value, codegen_pass.constants.items.len);
     for (0..constants.len) |i| {
-        constants[i] = try codegen_pass.constants.items[i].dupe(gpa_allocator);
+        constants[i] = codegen_pass.constants.items[i].dupe(gpa_allocator);
     }
 
     return CompileResult{ .bytecode = bytecode, .constants = constants };

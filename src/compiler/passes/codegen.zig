@@ -68,8 +68,8 @@ pub const Pass = struct {
 
     fn genNode(self: *Pass, node: *ast.Node) Error!void {
         switch (node.data) {
-            .number_constant => |*num| {
-                try self.pushConstant(value.Value{ .data = .{ .number = num.value } });
+            .int_constant => |*int| {
+                try self.pushConstant(value.Value{ .data = .{ .integer = int.value } });
             },
             .boolean_constant => |*boolean| {
                 try self.pushConstant(value.Value{ .data = .{ .boolean = boolean.value } });

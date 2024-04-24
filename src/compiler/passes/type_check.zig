@@ -69,7 +69,7 @@ pub const Pass = struct {
 
     fn typeCheck(self: *Pass, node: *ast.Node) Error!types.Type {
         switch (node.data) {
-            .number_constant => return .number,
+            .int_constant => return .int,
             .boolean_constant => return .boolean,
             .string_constant => return .string,
             .var_get => |_| return {
@@ -104,20 +104,20 @@ pub const Pass = struct {
                         return .boolean;
                     },
                     .greater_than, .less_than, .greater_than_equals, .less_than_equals => {
-                        const number_type: types.Type = .number;
-                        if (!lhs_type.equal(&rhs_type) or @intFromEnum(lhs_type) != @intFromEnum(number_type) or @intFromEnum(rhs_type) != @intFromEnum(number_type)) {
-                            try self.err_ctx.newError(.mismatched_types, "Expected number types binary expression, found type \"{any}\" and \"{any}\"", .{ lhs_type, rhs_type }, binary.rhs.index);
+                        const int_type: types.Type = .int;
+                        if (!lhs_type.equal(&rhs_type) or @intFromEnum(lhs_type) != @intFromEnum(int_type) or @intFromEnum(rhs_type) != @intFromEnum(int_type)) {
+                            try self.err_ctx.newError(.mismatched_types, "Expected number types in binary expression, found type \"{any}\" and \"{any}\"", .{ lhs_type, rhs_type }, binary.rhs.index);
                             return Error.MismatchedTypes;
                         }
                         return .boolean;
                     },
                     .add, .sub, .mul, .div => {
-                        const number_type: types.Type = .number;
-                        if (!lhs_type.equal(&rhs_type) or @intFromEnum(lhs_type) != @intFromEnum(number_type) or @intFromEnum(rhs_type) != @intFromEnum(number_type)) {
-                            try self.err_ctx.newError(.mismatched_types, "Expected number types binary expression, found type \"{any}\" and \"{any}\"", .{ lhs_type, rhs_type }, binary.rhs.index);
+                        const int_type: types.Type = .int;
+                        if (!lhs_type.equal(&rhs_type) or @intFromEnum(lhs_type) != @intFromEnum(int_type) or @intFromEnum(rhs_type) != @intFromEnum(int_type)) {
+                            try self.err_ctx.newError(.mismatched_types, "Expected number types int binary expression, found type \"{any}\" and \"{any}\"", .{ lhs_type, rhs_type }, binary.rhs.index);
                             return Error.MismatchedTypes;
                         }
-                        return .number;
+                        return .int;
                     },
                     else => {
                         if (!lhs_type.equal(&rhs_type)) {
@@ -254,7 +254,7 @@ pub const Pass = struct {
             },
             .array_set => |*array_set| {
                 const const_array_type: types.Type = .{ .array = undefined };
-                const const_num_type: types.Type = .number;
+                const const_int_type: types.Type = .int;
                 const array_type = try self.typeCheck(array_set.array);
                 const index_type = try self.typeCheck(array_set.index);
                 const expr_type = try self.typeCheck(array_set.expr);
@@ -262,8 +262,8 @@ pub const Pass = struct {
                     try self.err_ctx.newError(.mismatched_types, "Expected array type on left of array set, found type {any}", .{array_type}, array_set.expr.index);
                     return Error.MismatchedTypes;
                 }
-                if (!index_type.equal(&const_num_type)) {
-                    try self.err_ctx.newError(.mismatched_types, "Expected number type as index, found type {any}", .{index_type}, array_set.index.index);
+                if (!index_type.equal(&const_int_type)) {
+                    try self.err_ctx.newError(.mismatched_types, "Expected integer type as index, found type {any}", .{index_type}, array_set.index.index);
                     return Error.MismatchedTypes;
                 }
                 if (!array_type.array.base.equal(&expr_type)) {
@@ -331,14 +331,14 @@ pub const Pass = struct {
             },
             .index => |*index| {
                 const array_type: types.Type = .{ .array = undefined };
-                const num_type: types.Type = .number;
+                const int_type: types.Type = .int;
                 if (@intFromEnum(expr_type) != @intFromEnum(array_type)) { // don't want deep check
                     try self.err_ctx.newError(.mismatched_types, "Expected array type on left of indexing, found type {any}", .{expr_type}, node.index);
                     return Error.MismatchedTypes;
                 }
                 const index_type = try self.typeCheck(index.index);
-                if (!index_type.equal(&num_type)) {
-                    try self.err_ctx.newError(.mismatched_types, "Expected number type as index, found type {any}", .{index_type}, node.index);
+                if (!index_type.equal(&int_type)) {
+                    try self.err_ctx.newError(.mismatched_types, "Expected integer type as index, found type {any}", .{index_type}, node.index);
                     return Error.MismatchedTypes;
                 }
                 return expr_type.array.base.*;

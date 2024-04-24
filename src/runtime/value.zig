@@ -1,11 +1,12 @@
 //! Runtime value data, universal tagged union for any variable / constant
 
 const std = @import("std");
+const vm = @import("vm.zig");
 
 // data must be 8 bytes or lower
 pub const Value = struct {
     data: union(enum) {
-        number: f64,
+        integer: i64,
         boolean: bool,
         func: usize, // func table index
         object: *Object,
@@ -27,7 +28,7 @@ pub const Value = struct {
         _ = options;
 
         switch (self.data) {
-            .number => |number| try writer.print("{d}", .{number}),
+            .integer => |int| try writer.print("{d}", .{int}),
             .boolean => |boolean| try writer.print("{}", .{boolean}),
             .func => |func| try writer.print("[Function {d}]", .{func}),
             .object => |obj| {
@@ -49,10 +50,9 @@ pub const Value = struct {
         }
     }
 
-    pub inline fn dupe(self: *const Value, allocator: std.mem.Allocator) std.mem.Allocator.Error!Value {
-        @setCold(false);
+    pub inline fn dupe(self: *const Value, allocator: std.mem.Allocator) Value {
         switch (self.data) {
-            .object => |obj| return .{ .data = .{ .object = try obj.dupe(allocator) } },
+            .object => |obj| return .{ .data = .{ .object = obj.dupe(allocator) } },
             inline else => |_| {
                 return self.*;
             },
@@ -62,7 +62,7 @@ pub const Value = struct {
     /// Assumes both are the same type
     pub fn equals(self: *const Value, rhs: Value) bool {
         switch (self.data) {
-            .number => |num| return num == rhs.data.number,
+            .integer => |int| return int == rhs.data.integer,
             .boolean => |boolean| return boolean == rhs.data.boolean,
             .func => |func| return func == rhs.data.func,
             .object => |obj| return obj.equals(rhs.data.object),
@@ -89,18 +89,20 @@ pub const Object = struct {
         }
     }
 
-    pub inline fn dupe(self: *const Object, allocator: std.mem.Allocator) std.mem.Allocator.Error!*Object {
-        const new = try allocator.create(Object);
-        errdefer allocator.destroy(new);
+    pub inline fn dupe(self: *const Object, allocator: std.mem.Allocator) *Object {
+        const new = allocator.create(Object) catch |err| {
+            vm.errorHandle(err);
+            unreachable;
+        };
 
         switch (self.data) {
             .string => |str| {
                 var str_ref = str;
-                new.data = .{ .string = try str_ref.dupe(allocator) };
+                new.data = .{ .string = str_ref.dupe(allocator) };
             },
             .array => |array| {
                 var array_ref = array;
-                new.data = .{ .array = try array_ref.dupe(allocator) };
+                new.data = .{ .array = array_ref.dupe(allocator) };
             },
         }
 
@@ -133,9 +135,12 @@ pub const String = struct {
         allocator.free(self.raw);
     }
 
-    pub fn dupe(self: *String, allocator: std.mem.Allocator) std.mem.Allocator.Error!String {
+    pub fn dupe(self: *String, allocator: std.mem.Allocator) String {
         return String{
-            .raw = try allocator.dupe(u8, self.raw),
+            .raw = allocator.dupe(u8, self.raw) catch |err| {
+                vm.errorHandle(err);
+                unreachable;
+            },
         };
     }
 };
@@ -150,17 +155,14 @@ pub const Array = struct {
         self.items.deinit(allocator);
     }
 
-    pub fn dupe(self: *Array, allocator: std.mem.Allocator) std.mem.Allocator.Error!Array {
-        var new_items = try std.ArrayListUnmanaged(Value).initCapacity(allocator, self.items.items.len);
-        errdefer {
-            for (new_items.items) |*item| {
-                item.deinit(allocator);
-            }
-            new_items.deinit(allocator);
-        }
+    pub fn dupe(self: *Array, allocator: std.mem.Allocator) Array {
+        var new_items = std.ArrayListUnmanaged(Value).initCapacity(allocator, self.items.items.len) catch |err| {
+            vm.errorHandle(err);
+            unreachable;
+        };
 
         for (0..self.items.items.len) |i| {
-            new_items.items[i] = try self.items.items[i].dupe(allocator);
+            new_items.items[i] = self.items.items[i].dupe(allocator);
         }
 
         return Array{ .items = new_items };

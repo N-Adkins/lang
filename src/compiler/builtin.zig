@@ -32,6 +32,6 @@ pub const lookup = std.ComptimeStringMap(Data, .{
             .string,
         }},
         .deep_check_types = false,
-        .ret_type = .number,
+        .ret_type = .int,
     } },
 });

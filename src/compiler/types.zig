@@ -2,7 +2,7 @@ const std = @import("std");
 
 pub const Type = union(enum) {
     void,
-    number,
+    int,
     boolean,
     string,
     array: struct { base: *Type },
@@ -45,7 +45,7 @@ pub const Type = union(enum) {
         switch (self) {
             .void => try writer.writeAll("void"),
             .boolean => try writer.writeAll("bool"),
-            .number => try writer.writeAll("number"),
+            .int => try writer.writeAll("int"),
             .string => try writer.writeAll("string"),
             .array => |base| try writer.print("[{any}]", base),
             .function => |func| {
@@ -64,7 +64,7 @@ pub const Type = union(enum) {
 
 /// Should probably just make these keywords
 pub const builtin_lookup = std.ComptimeStringMap(Type, .{
-    .{ "number", Type.number },
+    .{ "int", Type.int },
     .{ "bool", Type.boolean },
     .{ "string", Type.string },
     .{ "void", Type.void },

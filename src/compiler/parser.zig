@@ -190,7 +190,7 @@ pub const Parser = struct {
                 }
                 break :blk try self.parseVarGet();
             },
-            .number => try self.parseNumberConstant(),
+            .number => try self.parseIntConstant(),
             .string_literal => try self.parseStringConstant(),
             .keyword_fn => try self.parseFunctionDecl(),
             .keyword_true, .keyword_false => try self.parseBoolean(),
@@ -327,17 +327,18 @@ pub const Parser = struct {
         return expression;
     }
 
-    fn parseNumberConstant(self: *Parser) Error!*ast.Node {
+    fn parseIntConstant(self: *Parser) Error!*ast.Node {
         const number = try self.expectToken(.number);
         const expression = try self.allocator.create(ast.Node);
-        const value = std.fmt.parseFloat(
-            @TypeOf(expression.data.number_constant.value),
+        const value = std.fmt.parseInt(
+            @TypeOf(expression.data.int_constant.value),
             self.lexer.source[number.start..number.end],
-        ) catch 0.0;
+            10,
+        ) catch 0;
         expression.* = .{
             .index = number.start,
             .data = .{
-                .number_constant = .{
+                .int_constant = .{
                     .value = value,
                 },
             },

@@ -68,7 +68,7 @@ pub const GC = struct {
     fn markValue(self: *GC, item: *value.Value) void {
         _ = self;
         switch (item.data) {
-            .number => |_| {},
+            .integer => |_| {},
             .boolean => |_| {},
             .func => |_| {},
             .object => |obj| {
