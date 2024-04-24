@@ -165,7 +165,7 @@ pub const Pass = struct {
                     }
                     unreachable;
                 };
-                
+
                 // if ret type is null, then assume it is the same as a null
                 // argument
                 const ret_type = if (data.ret_type) |ret| ret else blk: {

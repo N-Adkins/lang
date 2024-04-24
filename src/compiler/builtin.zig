@@ -34,7 +34,7 @@ pub const lookup = std.ComptimeStringMap(Data, .{
         .deep_check_types = false,
         .ret_type = .int,
     } },
-    .{ "clone" , .{
+    .{ "clone", .{
         .id = 3,
         .arg_count = 1,
         .arg_types = null,
