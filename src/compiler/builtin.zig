@@ -8,7 +8,7 @@ pub const Data = struct {
     arg_count: usize,
     arg_types: ?[]const []const types.Type, // null if any are fine
     deep_check_types: bool = true,
-    ret_type: types.Type,
+    ret_type: ?types.Type,
 };
 
 pub const lookup = std.ComptimeStringMap(Data, .{
@@ -33,5 +33,11 @@ pub const lookup = std.ComptimeStringMap(Data, .{
         }},
         .deep_check_types = false,
         .ret_type = .int,
+    } },
+    .{ "clone" , .{
+        .id = 3,
+        .arg_count = 1,
+        .arg_types = null,
+        .ret_type = null,
     } },
 });

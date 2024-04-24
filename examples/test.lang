@@ -38,6 +38,8 @@ var compare := fn (x: int, y: int) -> bool {
 };
 
 var array := [822, 327, 1, 83, 94, 27];
+var duped_array := clone(array);
 print(array);
+print(duped_array);
 inplace_sort(array, compare);
 print(array);

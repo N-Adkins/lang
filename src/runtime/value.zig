@@ -162,7 +162,10 @@ pub const Array = struct {
         };
 
         for (0..self.items.items.len) |i| {
-            new_items.items[i] = self.items.items[i].dupe(allocator);
+            new_items.append(allocator, self.items.items[i].dupe(allocator)) catch |err| {
+                vm.errorHandle(err);
+                unreachable;
+            };
         }
 
         return Array{ .items = new_items };

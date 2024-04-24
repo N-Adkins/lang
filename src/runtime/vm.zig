@@ -226,6 +226,7 @@ pub const VM = struct {
             0 => self.builtinPrint(),
             1 => self.builtinToString(),
             2 => self.builtinLength(),
+            3 => self.builtinClone(),
             else => unreachable,
         }
     }
@@ -387,6 +388,18 @@ pub const VM = struct {
             else => unreachable,
         };
         self.eval_stack.push(value.Value{ .data = .{ .integer = @intCast(len) } });
+    }
+
+    inline fn builtinClone(self: *VM) void {
+        const item = self.eval_stack.pop();
+        const dupe = item.dupe(self.allocator);
+        switch (dupe.data) {
+            .object => |obj| {
+                self.garbage_collector.linkObject(obj);
+            },
+            else => {},
+        }
+        self.eval_stack.push(dupe);
     }
 
     /// Fetches the next byte and errors if there isn't one

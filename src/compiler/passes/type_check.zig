@@ -165,6 +165,13 @@ pub const Pass = struct {
                     }
                     unreachable;
                 };
+                
+                // if ret type is null, then assume it is the same as a null
+                // argument
+                const ret_type = if (data.ret_type) |ret| ret else blk: {
+                    break :blk try self.typeCheck(call.args[0]);
+                };
+
                 for (0..call.args.len) |i| {
                     const arg = call.args[i];
                     const arg_type = try self.typeCheck(arg);
@@ -190,7 +197,7 @@ pub const Pass = struct {
                         }
                     }
                 }
-                return data.ret_type;
+                return ret_type;
             },
             .array_init => |*array| {
                 // allow empty array initialization later, it'll be void for now
