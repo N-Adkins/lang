@@ -15,4 +15,29 @@ var bad_fib := fn (self, x: int) -> int {
     return self(x-1) + self(x-2);
 };
 
-print(bad_fib(34));
+var inplace_sort := fn (arr: [int], compare: fn (int, int) -> bool) -> void {
+    var len := length(arr);
+    var i := 0;
+    while (i < len) {
+        var j := 0;
+        while (j < len - i - 1) {
+            if (compare(arr[j], arr[j+1])) {
+                var temp := arr[j];
+                arr[j] = arr[j+1];
+                arr[j+1] = temp;
+            }
+            j = j + 1;
+        }
+        i = i + 1;
+    }
+    return;
+};
+
+var compare := fn (x: int, y: int) -> bool {
+    return x > y;
+};
+
+var array := [822, 327, 1, 83, 94, 27];
+print(array);
+inplace_sort(array, compare);
+print(array);
