@@ -5,7 +5,7 @@ const err = @import("error.zig");
 const lexer = @import("lexer.zig");
 const parser = @import("parser.zig");
 const value = @import("../runtime/value.zig");
-const code_pass = @import("passes/codegen.zig");
+const code_pass = @import("passes/bytecode_backend.zig");
 const symbol_pass = @import("passes/symbol_populate.zig");
 const type_pass = @import("passes/type_check.zig");
 
