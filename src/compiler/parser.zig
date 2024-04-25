@@ -536,9 +536,7 @@ pub const Parser = struct {
 
     fn parseWhileLoop(self: *Parser) Error!*ast.Node {
         const start = try self.expectToken(.keyword_while);
-        _ = try self.expectToken(.l_paren);
         const expr = try self.parseExpression();
-        _ = try self.expectToken(.r_paren);
         const body = try self.parseBlock();
         const node = try self.allocator.create(ast.Node);
         node.* = .{
@@ -555,11 +553,9 @@ pub const Parser = struct {
 
     fn parseForLoop(self: *Parser) Error!*ast.Node {
         const start = try self.expectToken(.keyword_for);
-        _ = try self.expectToken(.l_paren);
         const init_stmt = try self.parseStatement();
         const condition = try self.parseStatement();
         const after = try self.parseStatement();
-        _ = try self.expectToken(.r_paren);
         const body = try self.parseBlock();
         const node = try self.allocator.create(ast.Node);
         node.* = .{
