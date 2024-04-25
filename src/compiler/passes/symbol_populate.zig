@@ -224,6 +224,15 @@ pub const Pass = struct {
                 try self.populateNode(while_loop.expr);
                 try self.populateNode(while_loop.body);
             },
+            .for_loop => |*for_loop| {
+                var stack = self.stack_stack.peek().?;
+                const frame = stack.getFrame();
+                try self.populateNode(for_loop.init);
+                try self.populateNode(for_loop.condition);
+                try self.populateNode(for_loop.after);
+                try self.populateNode(for_loop.body);
+                stack.popFrame(frame);
+            },
             .array_set => |*array_set| {
                 try self.populateNode(array_set.index);
                 try self.populateNode(array_set.expr);

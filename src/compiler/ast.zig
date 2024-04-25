@@ -50,6 +50,7 @@ pub const Node = struct {
         var_decl: VarDecl,
         var_assign: VarAssign,
         while_loop: WhileLoop,
+        for_loop: ForLoop,
         array_set: ArraySet,
         if_stmt: IfStatement,
         return_stmt: ReturnStatement,
@@ -117,6 +118,13 @@ pub const Node = struct {
 
     const WhileLoop = struct {
         expr: *Node,
+        body: *Node,
+    };
+
+    const ForLoop = struct {
+        init: *Node,
+        condition: *Node,
+        after: *Node,
         body: *Node,
     };
 

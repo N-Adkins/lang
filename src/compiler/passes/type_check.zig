@@ -259,6 +259,18 @@ pub const Pass = struct {
                 _ = try self.typeCheck(while_loop.body);
                 return .void;
             },
+            .for_loop => |*for_loop| {
+                const bool_type: types.Type = .boolean;
+                _ = try self.typeCheck(for_loop.init);
+                const cond_type = try self.typeCheck(for_loop.condition);
+                if (!cond_type.equal(&bool_type)) {
+                    try self.err_ctx.newError(.mismatched_types, "Expected boolean in for loop condition, found type {any}", .{cond_type}, for_loop.condition.index);
+                    return Error.MismatchedTypes;
+                }
+                _ = try self.typeCheck(for_loop.after);
+                _ = try self.typeCheck(for_loop.body);
+                return .void;
+            },
             .array_set => |*array_set| {
                 const const_array_type: types.Type = .{ .array = undefined };
                 const const_int_type: types.Type = .int;

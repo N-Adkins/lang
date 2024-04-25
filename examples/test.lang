@@ -1,42 +1,3 @@
-var fib := fn (x: int) -> int {
-    var state := [0, 1];
-    var i := 0;
-    while (i <= x) {
-        state[i % 2] = state[0] + state[1]; 
-        i = i + 1;
-    }
-    return state[i % 2]; 
-};
-
-var bad_fib := fn (self, x: int) -> int {
-    if (x <= 1) {
-        return x;
-    }
-    return self(x-1) + self(x-2);
-};
-
-var inplace_sort := fn (arr: [int], compare: fn (int, int) -> bool) -> void {
-    var len := length(arr);
-    var i := 0;
-    while (i < len) {
-        var j := 0;
-        while (j < len - i - 1) {
-            if (compare(arr[j], arr[j+1])) {
-                var temp := arr[j];
-                arr[j] = arr[j+1];
-                arr[j+1] = temp;
-            }
-            j = j + 1;
-        }
-        i = i + 1;
-    }
-    return;
-};
-
-var compare := fn (x: int, y: int) -> bool {
-    return x > y;
-};
-
 fn merge(array: [int], low: int, mid: int, high: int) -> void {
     var low_size := mid - low + 1;
     var high_size := high - mid;
@@ -44,21 +5,17 @@ fn merge(array: [int], low: int, mid: int, high: int) -> void {
     var low_array := clone(array);
     var high_array := clone(array);
     
-    var i := 0;
-    while (i < low_size) {
+    for (var i := 0; i < low_size; i = i + 1;) {
         low_array[i] = array[low + i];
-        i = i + 1;
     }
     
-    i = 0;
-    while (i < high_size) {
+    for (var i := 0; i < high_size; i = i + 1;) {
         high_array[i] = array[mid + i + 1];
-        i = i + 1;
     }
 
     var low_ptr := 0;
     var high_ptr := 0;
-    i = low;
+    var i := low;
 
     while (low_ptr < low_size and high_ptr < high_size) {
         if (low_array[low_ptr] < high_array[high_ptr]) {
@@ -84,7 +41,7 @@ fn merge(array: [int], low: int, mid: int, high: int) -> void {
     }
 
     return;
-};
+}
 
 fn merge_sort(array: [int], low: int, high: int) -> void {
     if (low >= high) {
@@ -95,9 +52,9 @@ fn merge_sort(array: [int], low: int, high: int) -> void {
     merge_sort(array, mid + 1, high);
     merge(array, low, mid, high);
     return;   
-};
+}
 
-var array := [822, 327, 1, 83, 94, 27, 128 ,12, 3,12 3,12,3 12,3 ,123 ,12,3 12,3,12];
+var array := [822, 327, 1, 83, 94, 27, 128 ,12, 3,12 3,12,3 12,3 ,123 ,12,3 12,3,12, 01 , 23, 38 3,57 474, 4784, 87312];
 
 print(array);
 merge_sort(array, 0, length(array)-1);

@@ -470,6 +470,10 @@ pub const Parser = struct {
                 needs_semicolon = false;
                 break :blk try self.parseWhileLoop();
             },
+            .keyword_for => blk: {
+                needs_semicolon = false;
+                break :blk try self.parseForLoop();
+            },
             .keyword_var => try self.parseVarDecl(),
             .identifier => blk: {
                 if (self.current) |current| {
@@ -506,6 +510,7 @@ pub const Parser = struct {
             else => blk: {
                 const expr = try self.parseExpression();
                 switch (expr.data) {
+                    .function_value => |_| needs_semicolon = false,
                     .unary_op => |unary| {
                         switch (unary.op) {
                             .index => |_| {
@@ -541,6 +546,29 @@ pub const Parser = struct {
             .data = .{
                 .while_loop = .{
                     .expr = expr,
+                    .body = body,
+                },
+            },
+        };
+        return node;
+    }
+
+    fn parseForLoop(self: *Parser) Error!*ast.Node {
+        const start = try self.expectToken(.keyword_for);
+        _ = try self.expectToken(.l_paren);
+        const init_stmt = try self.parseStatement();
+        const condition = try self.parseStatement();
+        const after = try self.parseStatement();
+        _ = try self.expectToken(.r_paren);
+        const body = try self.parseBlock();
+        const node = try self.allocator.create(ast.Node);
+        node.* = .{
+            .index = start.start,
+            .data = .{
+                .for_loop = .{
+                    .init = init_stmt,
+                    .condition = condition,
+                    .after = after,
                     .body = body,
                 },
             },
