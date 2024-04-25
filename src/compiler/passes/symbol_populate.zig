@@ -111,14 +111,14 @@ const Stack = struct {
 };
 
 pub const Pass = struct {
-    stack_stack: Stack, // stack of stacks lol
+    stack_stack: Stack = Stack{}, // stack of stacks lol
+    global_symbols: std.StringHashMapUnmanaged(*ast.SymbolDecl) = std.StringHashMapUnmanaged(*ast.SymbolDecl){},
     err_ctx: *err.ErrorContext,
     allocator: std.mem.Allocator,
     root: *ast.Node,
 
     pub fn init(allocator: std.mem.Allocator, err_ctx: *err.ErrorContext, root: *ast.Node) Error!Pass {
         var pass = Pass{
-            .stack_stack = Stack{},
             .err_ctx = err_ctx,
             .allocator = allocator,
             .root = root,
@@ -139,7 +139,9 @@ pub const Pass = struct {
             else => null,
         };
         if (get_symbol) |symbol| {
-            if (self.stack_stack.peek().?.find(symbol)) |found| {
+            if (self.global_symbols.get(symbol)) |found| {
+                node.symbol_decl = found;
+            } else if (self.stack_stack.peek().?.find(symbol)) |found| {
                 node.symbol_decl = found;
             } else {
                 try self.err_ctx.newError(.symbol_not_found, "Failed to locate symbol \"{s}\"", .{symbol}, node.index);
@@ -179,17 +181,22 @@ pub const Pass = struct {
                     else => unreachable,
                 }
             },
-            .function_decl => |*func_decl| {
-                var stack = try self.stack_stack.push(self.allocator, SymbolStack{ .allocator = self.allocator, .self_arg = func_decl.self_arg });
-                for (func_decl.args.items) |*arg| {
+            .function_value => |*func| {
+                var stack = try self.stack_stack.push(self.allocator, SymbolStack{ .allocator = self.allocator, .self_arg = func.self_arg });
+                for (func.args.items) |*arg| {
                     try stack.push(arg);
                 }
-                if (func_decl.self_arg) {
+                if (func.name) |name| {
+                    const symbol = try self.allocator.create(ast.SymbolDecl);
+                    symbol.* = ast.SymbolDecl{ .name = name, .function_decl = node };
+                    try self.global_symbols.put(self.allocator, name, symbol);
+                }
+                if (func.self_arg) {
                     const symbol = try self.allocator.create(ast.SymbolDecl);
                     symbol.* = ast.SymbolDecl{ .name = try self.allocator.dupe(u8, "self"), .function_decl = node };
                     try stack.push(symbol);
                 }
-                try self.populateNode(func_decl.body);
+                try self.populateNode(func.body);
                 var ret = self.stack_stack.pop();
                 ret.?.deinit();
             },

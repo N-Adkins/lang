@@ -192,7 +192,7 @@ pub const Parser = struct {
             },
             .number => try self.parseIntConstant(),
             .string_literal => try self.parseStringConstant(),
-            .keyword_fn => try self.parseFunctionDecl(),
+            .keyword_fn => try self.parseFunctionValue(),
             .keyword_true, .keyword_false => try self.parseBoolean(),
             else => {
                 try self.err_ctx.errorFromToken(.unexpected_token, "Expected expression, found [{s},\"{s}\"]", .{ @tagName(self.previous.?.tag), self.lexer.source[self.previous.?.start..self.previous.?.end] }, self.previous.?);
@@ -360,9 +360,22 @@ pub const Parser = struct {
         return node;
     }
 
-    fn parseFunctionDecl(self: *Parser) Error!*ast.Node {
+    fn parseFunctionValue(self: *Parser) Error!*ast.Node {
         const start = try self.expectToken(.keyword_fn);
-        _ = try self.expectToken(.l_paren);
+
+        const next = try self.expectToken(null);
+        const func_name = switch (next.tag) {
+            .identifier => blk: {
+                const dupe = try self.allocator.dupe(u8, self.lexer.source[next.start..next.end]);
+                _ = try self.expectToken(.l_paren);
+                break :blk dupe;
+            },
+            .l_paren => null,
+            else => {
+                try self.err_ctx.errorFromToken(.unexpected_token, "Expected identifier or l_paren after fn", .{}, next);
+                return Error.UnexpectedToken;
+            },
+        };
 
         var args = std.ArrayListUnmanaged(ast.SymbolDecl){};
 
@@ -414,8 +427,9 @@ pub const Parser = struct {
         node.* = .{
             .index = start.start,
             .data = .{
-                .function_decl = .{
+                .function_value = .{
                     .self_arg = self_ref,
+                    .name = func_name,
                     .args = args,
                     .ret_type = ret_type,
                     .body = body,

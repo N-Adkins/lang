@@ -43,7 +43,7 @@ pub const Node = struct {
         var_get: VarGet,
         unary_op: UnaryOp,
         binary_op: BinaryOp,
-        function_decl: FunctionDecl,
+        function_value: FunctionValue,
         builtin_call: BuiltinCall,
         array_init: ArrayInit,
         block: Block,
@@ -82,8 +82,9 @@ pub const Node = struct {
         rhs: *Node,
     };
 
-    const FunctionDecl = struct {
+    const FunctionValue = struct {
         self_arg: bool = false,
+        name: ?[]const u8,
         args: std.ArrayListUnmanaged(SymbolDecl) = std.ArrayListUnmanaged(SymbolDecl){},
         ret_type: types.Type,
         body: *Node,

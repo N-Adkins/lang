@@ -74,7 +74,7 @@ pub const Pass = struct {
             .string_constant => return .string,
             .var_get => |_| return {
                 if (node.symbol_decl.?.function_decl) |func| {
-                    return func.data.function_decl.func_type;
+                    return func.data.function_value.func_type;
                 }
                 return node.symbol_decl.?.decl_type.?;
             },
@@ -129,15 +129,15 @@ pub const Pass = struct {
                 }
             },
             .unary_op => |_| return try self.checkUnary(node),
-            .function_decl => |*func_decl| {
+            .function_value => |*func| {
                 var arg_types = std.ArrayListUnmanaged(types.Type){};
 
-                for (func_decl.args.items) |arg| {
+                for (func.args.items) |arg| {
                     try arg_types.append(self.allocator, arg.decl_type.?);
                 }
 
                 const ret = try self.allocator.create(types.Type);
-                ret.* = func_decl.ret_type;
+                ret.* = func.ret_type;
 
                 const func_type = types.Type{
                     .function = .{
@@ -146,11 +146,11 @@ pub const Pass = struct {
                     },
                 };
 
-                func_decl.func_type = func_type;
+                func.func_type = func_type;
 
                 _ = try self.func_stack.push(self.allocator, func_type);
 
-                _ = try self.typeCheck(func_decl.body);
+                _ = try self.typeCheck(func.body);
 
                 _ = self.func_stack.pop();
 

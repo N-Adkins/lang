@@ -51,14 +51,14 @@ pub const Pass = struct {
         const alloc_count = self.bytecode.items[self.func_stack.first.?.data.func].code.items.len;
         _ = try self.pushByte(0); // temp
         if (call_func) |func| {
-            const decl = func.data.function_decl;
+            const decl = func.data.function_value;
             for (decl.args.items) |*arg| {
                 _ = try self.pushLocal(arg);
             }
         }
         const frame = &self.func_stack.first.?.data;
         if (call_func) |func| {
-            func.data.function_decl.func_idx = frame.func;
+            func.data.function_value.func_idx = frame.func;
         }
         try self.genNode(body);
         self.bytecode.items[frame.func].code.items[alloc_count] = frame.local_count;
@@ -85,10 +85,8 @@ pub const Pass = struct {
             },
             .var_get => |_| {
                 if (node.symbol_decl.?.function_decl) |func| {
-                    if (std.mem.eql(u8, node.data.var_get.name, "self")) {
-                        try self.pushConstant(value.Value{ .data = .{ .func = func.data.function_decl.func_idx } });
-                        return;
-                    }
+                    try self.pushConstant(value.Value{ .data = .{ .func = func.data.function_value.func_idx } });
+                    return;
                 }
                 const decl = node.symbol_decl.?;
                 const index = try self.getLocal(decl);
@@ -140,11 +138,11 @@ pub const Pass = struct {
                     else => unreachable,
                 }
             },
-            .function_decl => |*func_decl| {
-                const func = try self.genFunc(func_decl.body, node);
+            .function_value => |*func| {
+                const func_code = try self.genFunc(func.body, node);
                 try self.pushConstant(value.Value{
                     .data = .{
-                        .func = func,
+                        .func = func_code,
                     },
                 });
             },
