@@ -6,8 +6,9 @@ const void_type: types.Type = .void;
 pub const Data = struct {
     id: u8,
     arg_count: usize,
-    arg_types: ?[]const []const types.Type, // null if any are fine
+    arg_types: ?[]const ?[]const types.Type, // null
     deep_check_types: bool = true,
+    array_inner_type: bool = false,
     ret_type: ?types.Type,
 };
 
@@ -39,5 +40,15 @@ pub const lookup = std.ComptimeStringMap(Data, .{
         .arg_count = 1,
         .arg_types = null,
         .ret_type = null,
+    } },
+    .{ "append", .{
+        .id = 4,
+        .arg_count = 2,
+        .arg_types = &.{&.{
+            types.Type{ .array = .{ .base = @constCast(&void_type) } },
+        }, null },
+        .deep_check_types = false,
+        .array_inner_type = true,
+        .ret_type = .void,
     } },
 });

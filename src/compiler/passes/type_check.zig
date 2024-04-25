@@ -172,25 +172,46 @@ pub const Pass = struct {
                     break :blk try self.typeCheck(call.args[0]);
                 };
 
+                const array_type: ?types.Type = if (data.array_inner_type) blk: {
+                    const first_arg = try self.typeCheck(call.args[0]);
+                    switch (first_arg) {
+                        .array => |array| {
+                            break :blk array.base.*;
+                        },
+                        else => {
+                            try self.err_ctx.newError(.mismatched_types, "Expected array in builtin function call, found type \"{any}\"", .{ first_arg }, call.args[0].index);
+                            return Error.MismatchedTypes;
+                        }
+                    }
+                } else null;
+
                 for (0..call.args.len) |i| {
                     const arg = call.args[i];
                     const arg_type = try self.typeCheck(arg);
                     if (data.arg_types) |arg_types| {
                         const correct_type = if (data.deep_check_types) blk: {
-                            for (arg_types[i]) |*this_arg| {
+                            for (arg_types[i].?) |*this_arg| {
                                 if (arg_type.equal(this_arg)) {
                                     break :blk true;
                                 }
                             }
                             break :blk false;
                         } else blk: {
-                            for (arg_types[i]) |this_arg| {
+                            if (array_type != null and arg_types[i] == null) {
+                                if (@intFromEnum(array_type.?) == @intFromEnum(arg_type)) {
+                                    break :blk true;
+                                } else {
+                                    break :blk false;
+                                }
+                            }
+                            for (arg_types[i].?) |this_arg| {
                                 if (@intFromEnum(this_arg) == @intFromEnum(arg_type)) {
                                     break :blk true;
                                 }
                             }
                             break :blk false;
                         };
+
                         if (!correct_type) {
                             try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in builtin function call, found type \"{any}\"", .{ arg_types[i], arg_type }, arg.index);
                             return Error.MismatchedTypes;
@@ -200,9 +221,6 @@ pub const Pass = struct {
                 return ret_type;
             },
             .array_init => |*array| {
-                // allow empty array initialization later, it'll be void for now
-                // I'll have to implement a special case disallowing type inference
-                // for empty ones
                 if (array.items.items.len <= 0) {
                     const void_type = try self.allocator.create(types.Type);
                     void_type.* = .void;
@@ -224,9 +242,13 @@ pub const Pass = struct {
                 return types.Type{ .array = .{ .base = heap_type } };
             },
             .var_decl => |*var_decl| {
+                const void_type: types.Type = .void;
+                const void_array: types.Type = .{ .array = .{ .base = @constCast(&void_type) } };
                 if (var_decl.symbol.decl_type) |*decl_type| {
                     var expr_type = try self.typeCheck(var_decl.expr);
-                    if (!expr_type.equal(decl_type)) {
+                    if (expr_type.equal(&void_array)) {
+                        return .void;
+                    } else if (!expr_type.equal(decl_type)) {
                         try self.err_ctx.newError(.mismatched_types, "Expected type \"{any}\" in variable declaration expression, found type \"{any}\"", .{ decl_type, expr_type }, var_decl.expr.index);
                         return Error.MismatchedTypes;
                     }

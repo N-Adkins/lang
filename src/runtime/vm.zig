@@ -227,6 +227,7 @@ pub const VM = struct {
             1 => self.builtinToString(),
             2 => self.builtinLength(),
             3 => self.builtinClone(),
+            4 => self.builtinAppend(),
             else => unreachable,
         }
     }
@@ -312,11 +313,9 @@ pub const VM = struct {
         }
 
         const obj = self.garbage_collector.newObject();
-        obj.* = .{
-            .data = .{
-                .array = .{
-                    .items = array,
-                },
+        obj.data = .{
+            .array = .{
+                .items = array,
             },
         };
         self.eval_stack.push(value.Value{ .data = .{ .object = obj } });
@@ -400,6 +399,15 @@ pub const VM = struct {
             else => {},
         }
         self.eval_stack.push(dupe);
+    }
+
+    inline fn builtinAppend(self: *VM) void {
+        const item = self.eval_stack.pop();
+        const array = self.eval_stack.pop();
+        array.data.object.data.array.items.append(self.allocator, item) catch |err| {
+            errorHandle(err);
+            unreachable;
+        };
     }
 
     /// Fetches the next byte and errors if there isn't one
