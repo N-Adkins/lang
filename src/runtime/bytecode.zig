@@ -17,10 +17,10 @@ pub const Opcode = enum(u8) {
     CALL_BUILTIN, // u8 builtin function number
     NEGATE, // pops 1 value off of stack, assumes boolean, negates and pushes result
     EQUAL, // pops 2 values off of stack, pushes boolean result after comparing
-    GREATER_THAN, // pops 2 values off of stack, pushes boolean result after comparing
-    GREATER_THAN_EQUALS, // pops 2 values off of stack, pushes boolean result after comparing,
-    LESS_THAN, // pops 2 values off of stack, pushes boolean result after comparing
-    LESS_THAN_EQUALS, // pops 2 values off of stack, pushes boolean result after comparing
+    GREATER, // pops 2 values off of stack, pushes boolean result after comparing
+    GREATER_EQ, // pops 2 values off of stack, pushes boolean result after comparing,
+    LESS, // pops 2 values off of stack, pushes boolean result after comparing
+    LESS_EQ, // pops 2 values off of stack, pushes boolean result after comparing
     AND, // pops 2 values off of stack, assumes boolean, pushes boolean after comparing
     OR, // pops 2 values off of stack, assumes boolean, pushes boolean after comparing
     BRANCH_NEQ, // u8 offset, pops value off of stack, if false then jump to offset, otherwise nothing
@@ -92,16 +92,16 @@ pub fn dumpBytecode(funcs: [][]const u8) void {
                 .EQUAL => {
                     std.debug.print("\n", .{});
                 },
-                .GREATER_THAN => {
+                .GREATER => {
                     std.debug.print("\n", .{});
                 },
-                .GREATER_THAN_EQUALS => {
+                .GREATER_EQ => {
                     std.debug.print("\n", .{});
                 },
-                .LESS_THAN => {
+                .LESS => {
                     std.debug.print("\n", .{});
                 },
-                .LESS_THAN_EQUALS => {
+                .LESS_EQ => {
                     std.debug.print("\n", .{});
                 },
                 .AND => {
