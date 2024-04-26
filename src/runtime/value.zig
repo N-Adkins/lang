@@ -89,6 +89,18 @@ pub const Object = struct {
         }
     }
 
+    /// Used so GC doesn't free nested heap structures, just the top level.
+    pub fn deinitShallow(self: *Object, allocator: std.mem.Allocator) void {
+        switch (self.data) {
+            .array => |*array| {
+                array.items.deinit(allocator);
+            },
+            inline else => |_| {
+                self.deinit(allocator);
+            },
+        }
+    }
+
     pub inline fn dupe(self: *const Object, allocator: std.mem.Allocator) *Object {
         const new = allocator.create(Object) catch |err| {
             vm.errorHandle(err);

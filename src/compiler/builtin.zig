@@ -44,7 +44,7 @@ pub const lookup = std.ComptimeStringMap(Data, .{
     .{ "append", .{
         .id = 4,
         .arg_count = 2,
-        .arg_types = &.{&.{
+        .arg_types = &.{ &.{
             types.Type{ .array = .{ .base = @constCast(&void_type) } },
         }, null },
         .deep_check_types = false,

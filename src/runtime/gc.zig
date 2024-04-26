@@ -16,7 +16,7 @@ pub const GC = struct {
         var iter = self.record_list;
         while (iter) |obj| {
             iter = obj.next;
-            obj.deinit(self.allocator);
+            obj.deinitShallow(self.allocator);
             self.allocator.destroy(obj);
         }
     }
@@ -55,7 +55,7 @@ pub const GC = struct {
                 }
                 // Destroy unmarked objects as they have
                 // no references
-                obj.deinit(self.allocator);
+                obj.deinitShallow(self.allocator);
                 self.allocator.destroy(obj);
             } else {
                 // Unmark marked objects but leave them
@@ -66,13 +66,20 @@ pub const GC = struct {
     }
 
     fn markValue(self: *GC, item: *value.Value) void {
-        _ = self;
         switch (item.data) {
             .integer => |_| {},
             .boolean => |_| {},
             .func => |_| {},
             .object => |obj| {
                 obj.marked = true;
+                switch (obj.data) {
+                    .array => |*array| {
+                        for (array.items.items) |*arr_item| {
+                            self.markValue(arr_item);
+                        }
+                    },
+                    else => {},
+                }
             },
         }
     }

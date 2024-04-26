@@ -179,9 +179,9 @@ pub const Pass = struct {
                             break :blk array.base.*;
                         },
                         else => {
-                            try self.err_ctx.newError(.mismatched_types, "Expected array in builtin function call, found type \"{any}\"", .{ first_arg }, call.args[0].index);
+                            try self.err_ctx.newError(.mismatched_types, "Expected array in builtin function call, found type \"{any}\"", .{first_arg}, call.args[0].index);
                             return Error.MismatchedTypes;
-                        }
+                        },
                     }
                 } else null;
 
