@@ -36,17 +36,19 @@ pub const VM = struct {
     eval_stack: stack.Stack(value.Value),
     call_stack: stack.Stack(CallFrame),
     garbage_collector: gc.GC,
+    rng: std.rand.Random,
     pc: usize = 0,
     err: ?Error = null,
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator, bytes: [][]const u8, constants: []const value.Value) VM {
+    pub fn init(allocator: std.mem.Allocator, rng: std.rand.Random, bytes: [][]const u8, constants: []const value.Value) VM {
         var vm = VM{
             .bytes = bytes,
             .constants = constants,
             .eval_stack = stack.Stack(value.Value).init(allocator, 0xFFFF),
             .call_stack = stack.Stack(CallFrame).init(allocator, 0xFFFF),
             .garbage_collector = gc.GC.init(allocator),
+            .rng = rng,
             .allocator = allocator,
         };
         vm.call_stack.push(CallFrame{ .index = 0, .func = 0, .stack_offset = 0, .root = true });
@@ -228,6 +230,7 @@ pub const VM = struct {
             2 => self.builtinLength(),
             3 => self.builtinClone(),
             4 => self.builtinAppend(),
+            5 => self.builtinRandom(),
             else => unreachable,
         }
     }
@@ -408,6 +411,19 @@ pub const VM = struct {
             errorHandle(err);
             unreachable;
         };
+    }
+
+    inline fn builtinRandom(self: *VM) void {
+        const max = self.eval_stack.pop().data.integer;
+        const min = self.eval_stack.pop().data.integer;
+        const raw = self.rng.int(i64);
+        const rand = @mod(raw, max - min + 1) + min;
+        const item = value.Value{
+            .data = .{
+                .integer = rand,
+            },
+        };
+        self.eval_stack.push(item);
     }
 
     /// Fetches the next byte and errors if there isn't one

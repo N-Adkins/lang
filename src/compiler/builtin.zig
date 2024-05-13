@@ -51,4 +51,14 @@ pub const lookup = std.ComptimeStringMap(Data, .{
         .array_inner_type = true,
         .ret_type = .void,
     } },
+    .{ "random", .{
+        .id = 5,
+        .arg_count = 2,
+        .arg_types = &.{ &.{
+            .int,
+        }, &.{
+            .int,
+        }},
+        .ret_type = .int,
+    } },
 });
