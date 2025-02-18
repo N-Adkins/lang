@@ -63,7 +63,7 @@ pub const Type = union(enum) {
 };
 
 /// Should probably just make these keywords
-pub const builtin_lookup = std.ComptimeStringMap(Type, .{
+pub const builtin_lookup = std.StaticStringMap(Type).initComptime(.{
     .{ "int", Type.int },
     .{ "bool", Type.boolean },
     .{ "string", Type.string },

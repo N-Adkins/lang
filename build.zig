@@ -6,13 +6,12 @@ pub fn build(b: *std.Build) void {
 
     const exe = b.addExecutable(.{
         .name = "lang",
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
-        .use_llvm = true, 
-        .use_lld = true,
+        .use_llvm = false, 
+        .use_lld = false,
     });
-
     b.installArtifact(exe);
 
     const run_cmd = b.addRunArtifact(exe);
@@ -25,7 +24,7 @@ pub fn build(b: *std.Build) void {
     run_step.dependOn(&run_cmd.step);
 
     const exe_unit_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
         .use_llvm = false,
@@ -39,7 +38,7 @@ pub fn build(b: *std.Build) void {
     
     const docs = b.addObject(.{
       .name = "Lang",
-      .root_source_file = .{ .path = "src/main.zig" },
+      .root_source_file = b.path("src/main.zig"),
       .target = target,
       .optimize = optimize,
     });

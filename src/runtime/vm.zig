@@ -15,7 +15,6 @@ pub const Error = error{
 } || stack.Error;
 
 pub fn errorHandle(err: Error) void {
-    @setCold(true);
     std.debug.print("Runtime Error: \"{s}\"\n", .{@errorName(err)});
     std.posix.exit(0);
 }
@@ -36,12 +35,12 @@ pub const VM = struct {
     eval_stack: stack.Stack(value.Value),
     call_stack: stack.Stack(CallFrame),
     garbage_collector: gc.GC,
-    rng: std.rand.Random,
+    rng: std.Random,
     pc: usize = 0,
     err: ?Error = null,
     allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator, rng: std.rand.Random, bytes: [][]const u8, constants: []const value.Value) VM {
+    pub fn init(allocator: std.mem.Allocator, rng: std.Random, bytes: [][]const u8, constants: []const value.Value) VM {
         var vm = VM{
             .bytes = bytes,
             .constants = constants,

@@ -52,7 +52,7 @@ pub const TokenTag = enum {
 };
 
 /// Used when parsing identifiers
-const keyword_lookup = std.ComptimeStringMap(TokenTag, .{
+const keyword_lookup = std.StaticStringMap(TokenTag).initComptime(.{
     .{ "var", TokenTag.keyword_var },
     .{ "if", TokenTag.keyword_if },
     .{ "while", TokenTag.keyword_while },

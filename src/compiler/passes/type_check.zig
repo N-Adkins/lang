@@ -158,9 +158,10 @@ pub const Pass = struct {
             },
             .builtin_call => |*call| {
                 const data: builtin.Data = blk: {
-                    for (builtin.lookup.kvs) |pairs| {
-                        if (pairs.value.id == call.idx) {
-                            break :blk pairs.value;
+                    for (0..builtin.lookup.kvs.len) |i| {
+                        const value = builtin.lookup.kvs.values[i];
+                        if (value.id == call.idx) {
+                            break :blk value;
                         }
                     }
                     unreachable;

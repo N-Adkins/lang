@@ -12,20 +12,20 @@ pub const Data = struct {
     ret_type: ?types.Type,
 };
 
-pub const lookup = std.ComptimeStringMap(Data, .{
-    .{ "print", .{
+pub const lookup = std.StaticStringMap(Data).initComptime(.{
+    .{ "print", Data{
         .id = 0,
         .arg_count = 1,
         .arg_types = null,
         .ret_type = .void,
     } },
-    .{ "to_string", .{
+    .{ "to_string", Data{
         .id = 1,
         .arg_count = 1,
         .arg_types = null,
         .ret_type = .string,
     } },
-    .{ "length", .{
+    .{ "length", Data{
         .id = 2,
         .arg_count = 1,
         .arg_types = &.{&.{
@@ -35,13 +35,13 @@ pub const lookup = std.ComptimeStringMap(Data, .{
         .deep_check_types = false,
         .ret_type = .int,
     } },
-    .{ "clone", .{
+    .{ "clone", Data{
         .id = 3,
         .arg_count = 1,
         .arg_types = null,
         .ret_type = null,
     } },
-    .{ "append", .{
+    .{ "append", Data{
         .id = 4,
         .arg_count = 2,
         .arg_types = &.{ &.{
@@ -51,7 +51,7 @@ pub const lookup = std.ComptimeStringMap(Data, .{
         .array_inner_type = true,
         .ret_type = .void,
     } },
-    .{ "random", .{
+    .{ "random", Data{
         .id = 5,
         .arg_count = 2,
         .arg_types = &.{ &.{
