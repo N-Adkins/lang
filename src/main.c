@@ -2,7 +2,7 @@
 
 int main(void)
 {
-    struct error_context err_ctx = init_error_ctx();
-    deinit_error_ctx(&err_ctx);
+    struct error_ctx err_ctx = error_ctx_init();
+    error_ctx_deinit(&err_ctx);
     return 0;
 }
