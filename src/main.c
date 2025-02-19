@@ -1,7 +1,8 @@
-#include <stdio.h>
+#include "error.h"
 
-int main()
+int main(void)
 {
-    printf("Test\n");
+    struct error_context err_ctx = init_error_ctx();
+    deinit_error_ctx(&err_ctx);
     return 0;
 }
