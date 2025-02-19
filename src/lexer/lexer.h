@@ -4,17 +4,26 @@
 #include <stdint.h>
 #include "../error.h"
 
+#define FOREACH_TOKEN(TOKEN) \
+    TOKEN(EOF) \
+    TOKEN(KEYWORD_VAR) \
+    TOKEN(IDENT) \
+    TOKEN(LPAREN) \
+    TOKEN(RPAREN) \
+    TOKEN(LCURLY) \
+    TOKEN(RCURLY) \
+    TOKEN(COLON) \
+    TOKEN(SEMICOLON) \
+    TOKEN(COMMA) 
+
+#define GEN_TOKEN_ENUM(token) \
+    TOKEN_##token,
+
 enum token_tag {
-    TOKEN_EOF,
-    TOKEN_KEYWORD_VAR,
-    TOKEN_IDENT,
-    TOKEN_LPAREN,
-    TOKEN_RPAREN,
-    TOKEN_LCURLY,
-    TOKEN_RCURLY,
-    TOKEN_COLON,
-    TOKEN_SEMICOLON,
+    FOREACH_TOKEN(GEN_TOKEN_ENUM)
 };
+
+extern const char *token_tag_tostring[];
 
 struct token {
     enum token_tag tag;
