@@ -1,5 +1,8 @@
 #include "lexer.h"
 
+#include <assert.h>
+#include <stdlib.h>
+
 #define GEN_TOKEN_STRING(token) \
     #token,
 
@@ -29,6 +32,9 @@ static bool is_ident(char c)
 
 static void tokenize_ident(struct lexer *lexer, struct token *token)
 {
+    assert(lexer != NULL);
+    assert(token != NULL);
+
     const int start = lexer->index;
     while (lexer->index < lexer->source->len && is_ident(lexer->source->raw[lexer->index])) {
         lexer->index++;
@@ -46,6 +52,9 @@ static void tokenize_ident(struct lexer *lexer, struct token *token)
 
 static void tokenize_num(struct lexer *lexer, struct token *token)
 {
+    assert(lexer != NULL);
+    assert(token != NULL);
+
     const int start = lexer->index;
     while (lexer->index < lexer->source->len && is_number(lexer->source->raw[lexer->index])) {
         lexer->index++;
@@ -63,6 +72,9 @@ static void tokenize_num(struct lexer *lexer, struct token *token)
 
 static void tokenize_misc(struct lexer *lexer, struct token *token)
 {
+    assert(lexer != NULL);
+    assert(token != NULL);
+
     const int start = lexer->index;
     const char next_c = lexer->source->raw[lexer->index++];
     
@@ -106,6 +118,9 @@ void skip_whitespace(struct lexer *lexer)
 
 void lexer_next(struct lexer *lexer, struct token *token)
 {
+    assert(lexer != NULL);
+    assert(token != NULL);
+
     skip_whitespace(lexer);
 
     if (lexer->index >= lexer->source->len) {

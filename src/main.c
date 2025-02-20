@@ -24,8 +24,10 @@ int main(void)
 
     if (!error_ctx_isempty(&err_ctx)) {
         error_ctx_dump(&err_ctx);
+        goto LEX_ERROR;
     }
 
+LEX_ERROR:;
     error_ctx_deinit(&err_ctx);
 
     return 0;
