@@ -8,7 +8,7 @@ int main(void)
 {
     struct error_ctx err_ctx = error_ctx_init();
         
-    const char *source_raw = "idskdkdskdsk128389kdkdkslakl()() () )( ;;:::)";
+    const char *source_raw = "idskdkdskdsk1283 832 % 89kd kd ksla kl ()() ();";
     struct source_info source = {
         .filename = "idk.test",
         .raw = source_raw,
@@ -21,6 +21,10 @@ int main(void)
         lexer_next(&lexer, &token);
         printf("%s\n", token_tag_tostring[token.tag]);
     } while(token.tag != TOKEN_EOF);
+
+    if (!error_ctx_isempty(&err_ctx)) {
+        error_ctx_dump(&err_ctx);
+    }
 
     error_ctx_deinit(&err_ctx);
 

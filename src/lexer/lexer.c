@@ -7,6 +7,11 @@ const char *token_tag_tostring[] = {
     FOREACH_TOKEN(GEN_TOKEN_STRING)
 };
 
+static bool is_whitespace(char c)
+{
+    return c == ' ' || c == '\n' || c == '\t';
+}
+
 static bool is_number(char c)
 {
     return c >= '0' && c <= '9';
@@ -24,13 +29,30 @@ static bool is_ident(char c)
 
 static void tokenize_ident(struct lexer *lexer, struct token *token)
 {
-    const uint32_t start = lexer->index;
+    const int start = lexer->index;
     while (lexer->index < lexer->source->len && is_ident(lexer->source->raw[lexer->index])) {
         lexer->index++;
     }
-    const uint32_t end = lexer->index;
+    const int end = lexer->index;
 
-    enum token_tag tag = TOKEN_IDENT;
+    const enum token_tag tag = TOKEN_IDENT;
+
+    *token = (struct token) {
+        .tag = tag,
+        .start = start,
+        .end = end,
+    };
+}
+
+static void tokenize_num(struct lexer *lexer, struct token *token)
+{
+    const int start = lexer->index;
+    while (lexer->index < lexer->source->len && is_number(lexer->source->raw[lexer->index])) {
+        lexer->index++;
+    }
+    const int end = lexer->index;
+
+    const enum token_tag tag = TOKEN_INT_LIT;
 
     *token = (struct token) {
         .tag = tag,
@@ -41,10 +63,10 @@ static void tokenize_ident(struct lexer *lexer, struct token *token)
 
 static void tokenize_misc(struct lexer *lexer, struct token *token)
 {
-    const uint32_t start = lexer->index;
+    const int start = lexer->index;
     const char next_c = lexer->source->raw[lexer->index++];
     
-    enum token_tag tag = TOKEN_EOF;
+    enum token_tag tag = TOKEN_ERROR;
     switch (next_c) {
     case '(': tag = TOKEN_LPAREN; break;
     case ')': tag = TOKEN_RPAREN; break;
@@ -57,7 +79,7 @@ static void tokenize_misc(struct lexer *lexer, struct token *token)
         error_ctx_push(lexer->err_ctx, lexer->source, "Found illegal character '%c'", next_c);
     }
 
-    const uint32_t end = lexer->index;
+    const int end = lexer->index;
 
     *token = (struct token) {
         .tag = tag,
@@ -75,8 +97,17 @@ struct lexer lexer_init(struct error_ctx *err_ctx, struct source_info *source)
     };
 }
 
+void skip_whitespace(struct lexer *lexer)
+{
+    while (lexer->index < lexer->source->len && is_whitespace(lexer->source->raw[lexer->index])) {
+        lexer->index++;
+    }
+}
+
 void lexer_next(struct lexer *lexer, struct token *token)
 {
+    skip_whitespace(lexer);
+
     if (lexer->index >= lexer->source->len) {
         *token = (struct token) {
             .tag = TOKEN_EOF,
@@ -87,9 +118,14 @@ void lexer_next(struct lexer *lexer, struct token *token)
     }
 
     const char next = lexer->source->raw[lexer->index];
-    if (is_ident(next)) {
+    if (is_number(next)) {
+        tokenize_num(lexer, token);
+        return;
+    } else if (is_ident(next)) {
         tokenize_ident(lexer, token);
+        return;
     } else {
         tokenize_misc(lexer, token);
+        return;
     }
 }

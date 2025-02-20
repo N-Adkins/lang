@@ -2,13 +2,12 @@
 #define LANG_ERROR_H
 
 #include <stdbool.h>
-#include <stdint.h>
 
 // Descriptor for a source file of code
 struct source_info {
     char filename[512];
     const char *raw;
-    uint64_t len;
+    int len;
 };
 
 struct error {
@@ -20,8 +19,8 @@ struct error {
 // captured at a time
 struct error_ctx {
     struct error *errors;
-    uint32_t size;
-    uint32_t capacity;
+    int size;
+    int capacity;
 };
 
 struct error_ctx error_ctx_init(void);

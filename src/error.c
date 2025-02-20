@@ -67,7 +67,7 @@ void error_ctx_dump(const struct error_ctx *ctx)
     assert(ctx != NULL);
     assert(ctx->errors != NULL);
 
-    for (uint32_t i = 0; i < ctx->size; i++) {
+    for (int i = 0; i < ctx->size; i++) {
         print_error(&ctx->errors[i]);
     }
 }
