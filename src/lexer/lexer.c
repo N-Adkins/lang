@@ -1,6 +1,7 @@
 #include "lexer.h"
 
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 #define GEN_TOKEN_STRING(token) \
@@ -143,4 +144,15 @@ void lexer_next(struct lexer *lexer, struct token *token)
         tokenize_misc(lexer, token);
         return;
     }
+}
+
+void lexer_dump(struct lexer *lexer)
+{
+    assert(lexer != NULL);
+
+    struct token token;
+    do {
+        lexer_next(lexer, &token);
+        printf("%10s \"%.*s\"\n", token_tag_tostring[token.tag], token.end - token.start, &lexer->source->raw[token.start]);
+    } while(token.tag != TOKEN_EOF);
 }

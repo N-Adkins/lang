@@ -1,7 +1,6 @@
 #include "lexer/lexer.h"
 #include "error.h"
 
-#include <stdio.h>
 #include <string.h>
 
 int main(void)
@@ -16,12 +15,8 @@ int main(void)
     };
 
     struct lexer lexer = lexer_init(&err_ctx, &source);
-    struct token token;
-    do {
-        lexer_next(&lexer, &token);
-        printf("%s\n", token_tag_tostring[token.tag]);
-    } while(token.tag != TOKEN_EOF);
-
+    lexer_dump(&lexer);
+    
     if (!error_ctx_isempty(&err_ctx)) {
         error_ctx_dump(&err_ctx);
         goto LEX_ERROR;

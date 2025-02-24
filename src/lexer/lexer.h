@@ -40,5 +40,6 @@ struct lexer {
 
 struct lexer lexer_init(struct error_ctx *err_ctx, struct source_info *source);
 void lexer_next(struct lexer *lexer, struct token *token);
+void lexer_dump(struct lexer *lexer);
 
 #endif
