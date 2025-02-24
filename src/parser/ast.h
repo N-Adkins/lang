@@ -31,5 +31,6 @@ struct ast_node {
 void ast_init(struct ast_node *node);
 void ast_deinit(struct ast_node *node);
 void ast_push_child(struct ast_node *parent, struct ast_node *child);
+void ast_dump(struct ast_node *root);
 
 #endif

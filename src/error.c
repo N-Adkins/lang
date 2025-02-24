@@ -22,7 +22,9 @@ struct error_ctx error_ctx_init(void)
     };
 
     ctx.errors = malloc(sizeof(struct error) * ctx.capacity);
-    assert(ctx.errors != NULL);
+    if (ctx.errors == NULL) {
+        fprintf(stderr, "OOM\n");
+    }
 
     return ctx;
 }
@@ -53,7 +55,10 @@ void error_ctx_push(struct error_ctx *ctx, const struct source_info *source, con
     if (ctx->size >= ctx->capacity) {
         ctx->capacity *= 2;
         ctx->errors = realloc(ctx->errors, sizeof(struct error) * ctx->capacity);
-        assert(ctx->errors != NULL);
+        if (ctx->errors == NULL) {
+            fprintf(stderr, "OOM\n");
+            return;
+        }
     }
     ctx->errors[ctx->size++] = err;
 }

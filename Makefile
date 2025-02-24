@@ -38,7 +38,7 @@ DBG_DEPS 		:= $(DBG_OBJ:.o=.d)
 REL_OBJ 		:= $(patsubst src/%.c, $(REL_OBJ_DIR)/%.o, $(SRC))
 REL_DEPS 		:= $(REL_OBJ:.o=.d)
 
-default: release
+default: debug
 
 all: debug release
 
