@@ -11,6 +11,11 @@ const char *token_tag_tostring[] = {
     FOREACH_TOKEN(GEN_TOKEN_STRING)
 };
 
+void token_as_string(const struct source_info *source, struct token token, char *string)
+{
+    sprintf(string, "%.*s", token.end - token.start, &source->raw[token.start]);
+}
+
 static bool is_whitespace(char c)
 {
     return c == ' ' || c == '\n' || c == '\t';

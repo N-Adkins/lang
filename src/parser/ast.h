@@ -6,7 +6,13 @@
 #define AST_STRING_LEN 128
 
 #define FOREACH_AST_NODE(NODE) \
-    NODE()
+    NODE(MODULE) \
+    NODE(FUNC_DECL) \
+    NODE(BLOCK) \
+    NODE(VAR_DECL) \
+    NODE(VAR_GET) \
+    NODE(INT_LIT) \
+    NODE(TYPE_NAME)
 
 #define GEN_AST_ENUM(node) \
     AST_##node,
