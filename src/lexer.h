@@ -1,7 +1,7 @@
 #ifndef LANG_LEXER_H
 #define LANG_LEXER_H
 
-#include "../error.h"
+#include "error.h"
 
 #define FOREACH_TOKEN(TOKEN) \
     TOKEN(EOF) \

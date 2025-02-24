@@ -1,4 +1,4 @@
-#include "lexer/lexer.h"
+#include "lexer.h"
 #include "error.h"
 
 #include <string.h>
