@@ -7,6 +7,7 @@
     TOKEN(EOF) \
     TOKEN(ERROR) \
     TOKEN(KEYWORD_VAR) \
+    TOKEN(KEYWORD_FUNC) \
     TOKEN(IDENT) \
     TOKEN(INT_LIT) \
     TOKEN(LPAREN) \
@@ -15,7 +16,8 @@
     TOKEN(RCURLY) \
     TOKEN(COLON) \
     TOKEN(SEMICOLON) \
-    TOKEN(COMMA)
+    TOKEN(COMMA) \
+    TOKEN(EQUALS)
 
 #define GEN_TOKEN_ENUM(token) \
     TOKEN_##token,

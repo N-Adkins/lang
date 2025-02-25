@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define GEN_TOKEN_STRING(token) \
     #token,
@@ -47,13 +48,20 @@ static void tokenize_ident(struct lexer *lexer, struct token *token)
     }
     const int end = lexer->index;
 
-    const enum token_tag tag = TOKEN_IDENT;
-
     *token = (struct token) {
-        .tag = tag,
+        .tag = TOKEN_IDENT,
         .start = start,
         .end = end,
     };
+    
+    char str[256];
+    token_as_string(lexer->source, *token, str);
+
+    if (strcmp(str, "var") == 0) {
+        token->tag = TOKEN_KEYWORD_VAR;
+    } else if (strcmp(str, "func") == 0) {
+        token->tag = TOKEN_KEYWORD_FUNC;
+    }
 }
 
 static void tokenize_num(struct lexer *lexer, struct token *token)
@@ -93,6 +101,7 @@ static void tokenize_misc(struct lexer *lexer, struct token *token)
     case ':': tag = TOKEN_COLON; break;
     case ';': tag = TOKEN_SEMICOLON; break;
     case ',': tag = TOKEN_COMMA; break;
+    case '=': tag = TOKEN_EQUALS; break;
     default:
         error_ctx_push(lexer->err_ctx, lexer->source, "Found illegal character '%c'", next_c);
     }
