@@ -30,9 +30,13 @@ static char *ast_sprintf(char *buffer, struct ast_node *node)
     return buffer;
 }
 
-void ast_init(struct ast_node *node)
+struct ast_node *ast_init(void)
 {
-    assert(node != NULL);
+    struct ast_node *node = malloc(sizeof(struct ast_node));
+    if (node == NULL) {
+        fprintf(stderr, "OOM\n");
+        return NULL;
+    }
 
     *node = (struct ast_node) {
         .number = 0,
@@ -42,6 +46,8 @@ void ast_init(struct ast_node *node)
     };
 
     memset(&node->string[0], '\0', AST_STRING_LEN);
+    
+    return node;
 }
 
 void ast_deinit(struct ast_node *node)

@@ -34,7 +34,7 @@ struct ast_node {
     enum ast_tag tag;
 };
 
-void ast_init(struct ast_node *node);
+struct ast_node *ast_init(void);
 void ast_deinit(struct ast_node *node);
 void ast_push_child(struct ast_node *parent, struct ast_node *child);
 void ast_dump(struct ast_node *root);

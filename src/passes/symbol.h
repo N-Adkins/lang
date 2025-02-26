@@ -46,14 +46,32 @@ struct symbol {
     type_id type;
 };
 
-struct symbol_table {
-    struct symbol_table *parent;
-    struct symbol *buckets;
+struct symbol_list {
+    struct symbol *symbols;
     int count;
     int capacity;
 };
 
-struct symbol_table *symbol_table_init(struct symbol_table *parent);
-void symbol_table_deinit(struct symbol_table *table);
+typedef int scope_id;
+
+struct scope {
+    struct symbol_table *table;
+    symbol_id *symbols;
+    scope_id parent;
+    int count;
+    int capacity;
+};
+
+struct scope_list {
+    struct scope *scopes;
+    int count;
+    int capacity;
+};
+
+struct symbol_table {
+    struct scope_list scopes;
+    struct symbol_list symbols;
+    struct type_list types;
+};
 
 #endif

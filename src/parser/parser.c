@@ -22,13 +22,10 @@ static struct ast_node *node_from_token(const struct source_info *source, struct
 {
     assert(source != NULL);
 
-    struct ast_node *node = malloc(sizeof(struct ast_node));
+    struct ast_node *node = ast_init();
     if (node == NULL) {
-        fprintf(stderr, "OOM\n");
         return NULL;
     }
-
-    ast_init(node);
     
     token_as_string(source, token, node->string);
 
@@ -129,8 +126,10 @@ struct ast_node *parse_block(struct parser *parser)
         return NULL;
     }
 
-    struct ast_node *node = malloc(sizeof(struct ast_node));
-    ast_init(node);
+    struct ast_node *node = ast_init();
+    if (node == NULL) {
+        return NULL;
+    }
     node->tag = AST_BLOCK;
 
     while (parser->previous.tag != TOKEN_RCURLY && parser->previous.tag != TOKEN_EOF) {
@@ -267,13 +266,10 @@ struct ast_node *parser_parse(struct parser *parser)
 {
     assert(parser != NULL);
     
-    struct ast_node *node = malloc(sizeof(struct ast_node));
+    struct ast_node *node = ast_init();
     if (node == NULL) {
-        fprintf(stderr, "OOM\n");
         return NULL;
-    }
-
-    ast_init(node);
+    } 
     node->tag = AST_MODULE;
     strcpy(node->string, parser->source->filename);
     
