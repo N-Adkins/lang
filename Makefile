@@ -1,5 +1,5 @@
 CC 				:= gcc
-CFLAGS 	 		:= -std=c99 -Werror -Wall -Wextra -Wshadow -Wpedantic
+CFLAGS 	 		:= -std=c99 -Werror -Wall -Wextra -Wshadow -Wpedantic -Wno-unused-function
 CPPFLAGS 		:= -MMD -MP
 LDLIBS 	 		:= -lm
 LDFLAGS 		:= 

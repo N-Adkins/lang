@@ -15,12 +15,14 @@ const char *ast_tag_tostring[] = {
 static char *ast_sprintf(char *buffer, struct ast_node *node)
 {
     buffer += sprintf(buffer,
-        "{tag:\"%s\",string:\"%s\",number:%d,children:[",
+        "{\"tag\":\"%s\",\"string\":\"%s\",\"number\":%d,\"children\":[",
         ast_tag_tostring[node->tag], node->string, node->number);
     
     for (int i = 0; i < node->child_count; i++) {
         buffer = ast_sprintf(buffer, node->child[i]);
-        buffer += sprintf(buffer, ",");
+        if (i < node->child_count - 1) {
+            buffer += sprintf(buffer, ",");
+        }
     }
 
     buffer += sprintf(buffer, "]}");
@@ -45,7 +47,13 @@ void ast_init(struct ast_node *node)
 void ast_deinit(struct ast_node *node)
 {
     assert(node != NULL);
-    (void)node; 
+    for (int i = 0; i < node->child_count; i++) {
+        ast_deinit(node->child[i]);
+    }
+    if (node->child != NULL) {
+        free(node->child);
+    }
+    free(node);
 }
 
 void ast_push_child(struct ast_node *parent, struct ast_node *child)
@@ -77,5 +85,5 @@ void ast_dump(struct ast_node *root)
 {
     char buffer[0xFFF]; // Should work for now
     ast_sprintf(buffer, root);
-    printf("%s", buffer);
+    printf("%s\n", buffer);
 }

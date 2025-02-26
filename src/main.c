@@ -1,5 +1,7 @@
-#include "lexer.h"
 #include "error.h"
+#include "lexer.h"
+#include "parser/ast.h"
+#include "parser/parser.h"
 
 #include <string.h>
 
@@ -7,7 +9,7 @@ int main(void)
 {
     struct error_ctx err_ctx = error_ctx_init();
         
-    const char *source_raw = "idskdkdskdsk1283 832 % 89kd kd ksla kl ()() ();";
+    const char *source_raw = "{ var test: idk = 0; }";
     struct source_info source = {
         .filename = "idk.test",
         .raw = source_raw,
@@ -15,7 +17,16 @@ int main(void)
     };
 
     struct lexer lexer = lexer_init(&err_ctx, &source);
-    lexer_dump(&lexer);
+    struct parser parser = {
+        .lexer = &lexer,
+        .source = &source,
+        .err_ctx = &err_ctx,
+    };
+    struct ast_node *ast = parser_parse(&parser);
+    if (ast != NULL) {
+        ast_dump(ast);
+        ast_deinit(ast);
+    }
     
     if (!error_ctx_isempty(&err_ctx)) {
         error_ctx_dump(&err_ctx);
