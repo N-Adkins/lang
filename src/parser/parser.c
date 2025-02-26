@@ -138,10 +138,11 @@ struct ast_node *parse_block(struct parser *parser)
         if (stmt == NULL) {
             goto FREE_NODE;
         }
+        ast_push_child(node, stmt);
+
         if (!parser_expect(parser, TOKEN_SEMICOLON, NULL)) {
             goto FREE_NODE;
         }
-        ast_push_child(node, stmt);
     }
 
     if (!parser_expect(parser, TOKEN_RCURLY, NULL)) {
