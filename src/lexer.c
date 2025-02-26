@@ -92,7 +92,7 @@ static void tokenize_misc(struct lexer *lexer, struct token *token)
     const int start = lexer->index;
     const char next_c = lexer->source->raw[lexer->index++];
     
-    enum token_tag tag = TOKEN_ERROR;
+    enum token_tag tag = TOKEN_INVALID;
     switch (next_c) {
     case '(': tag = TOKEN_LPAREN; break;
     case ')': tag = TOKEN_RPAREN; break;
@@ -103,7 +103,7 @@ static void tokenize_misc(struct lexer *lexer, struct token *token)
     case ',': tag = TOKEN_COMMA; break;
     case '=': tag = TOKEN_EQUALS; break;
     default:
-        error_ctx_push(lexer->err_ctx, lexer->source, "Found illegal character '%c'", next_c);
+        error_ctx_push(lexer->err_ctx, lexer->source, start, "Found illegal character '%c'", next_c);
     }
 
     const int end = lexer->index;

@@ -13,6 +13,7 @@ struct source_info {
 struct error {
     char msg[512];
     const struct source_info *source;
+    int source_index;
 };
 
 // Maintains a list of compilation errors to allow more than one to be
@@ -25,7 +26,7 @@ struct error_ctx {
 
 struct error_ctx error_ctx_init(void);
 void error_ctx_deinit(struct error_ctx *ctx);
-void error_ctx_push(struct error_ctx *ctx, const struct source_info *source, const char *msg, ...);
+void error_ctx_push(struct error_ctx *ctx, const struct source_info *source, int index, const char *msg, ...);
 bool error_ctx_isempty(const struct error_ctx *ctx);
 void error_ctx_dump(const struct error_ctx *ctx);
 

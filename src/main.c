@@ -9,7 +9,7 @@ int main(void)
 {
     struct error_ctx err_ctx = error_ctx_init();
         
-    const char *source_raw = "{ var test: idk = 0; }";
+    const char *source_raw = "{ var test: idk = 0; }\n*\n^";
     struct source_info source = {
         .filename = "idk.test",
         .raw = source_raw,
@@ -22,19 +22,22 @@ int main(void)
         .source = &source,
         .err_ctx = &err_ctx,
     };
+        
     struct ast_node *ast = parser_parse(&parser);
+    
     if (ast != NULL) {
         ast_dump(ast);
         ast_deinit(ast);
     }
-    
+
     if (!error_ctx_isempty(&err_ctx)) {
-        error_ctx_dump(&err_ctx);
-        goto LEX_ERROR;
+        goto DUMP_ERRORS;
     }
-
-LEX_ERROR:;
-    error_ctx_deinit(&err_ctx);
-
+    
     return 0;
+
+DUMP_ERRORS:;
+    error_ctx_dump(&err_ctx);
+    error_ctx_deinit(&err_ctx);
+    return 1;
 }

@@ -62,7 +62,7 @@ bool parser_expect(struct parser *parser, enum token_tag tag, struct token *out_
         return true;
     }
 
-    error_ctx_push(parser->err_ctx, parser->source, 
+    error_ctx_push(parser->err_ctx, parser->source, parser->previous.start,
             "Expected token of type \"%s\", instead found token of type \"%s\"",
             token_tag_tostring[tag], token_tag_tostring[parser->previous.tag]);
 
@@ -114,7 +114,7 @@ struct ast_node *parse_stmt(struct parser *parser)
         break;
     }
     
-    error_ctx_push(parser->err_ctx, parser->source, 
+    error_ctx_push(parser->err_ctx, parser->source, parser->previous.start,
             "Expected statement, instead found token of type \"%s\"",
             token_tag_tostring[parser->previous.tag]);
 
@@ -218,7 +218,7 @@ struct ast_node *parse_expr(struct parser *parser)
         break;
     }
     
-    error_ctx_push(parser->err_ctx, parser->source, 
+    error_ctx_push(parser->err_ctx, parser->source, parser->previous.start,
             "Expected expression, instead found token of type \"%s\"",
             token_tag_tostring[parser->previous.tag]);
 
@@ -279,7 +279,7 @@ struct ast_node *parser_parse(struct parser *parser)
     parser_advance(parser);
     parser_advance(parser);
     
-    while (parser->current.tag != TOKEN_EOF) {
+    while (parser->previous.tag != TOKEN_EOF) {
         struct ast_node *top_level = parse_top_level(parser);
         if (top_level == NULL) {
             goto FREE_NODE;
