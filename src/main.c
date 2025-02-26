@@ -9,7 +9,7 @@ int main(void)
 {
     struct error_ctx err_ctx = error_ctx_init();
         
-    const char *source_raw = "{ var test: idk = 0 }\n";
+    const char *source_raw = "{ var test: idk = 0; }\n";
     struct source_info source = {
         .filename = "idk.test",
         .raw = source_raw,
@@ -33,6 +33,8 @@ int main(void)
     if (!error_ctx_isempty(&err_ctx)) {
         goto DUMP_ERRORS;
     }
+
+    error_ctx_deinit(&err_ctx);
     
     return 0;
 
