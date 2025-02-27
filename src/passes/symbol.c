@@ -11,19 +11,6 @@ const char *type_tag_tostring[] = {
     FOREACH_TYPE(GEN_TYPE_STRING)
 };
 
-static unsigned int fnv1a_hash(const char *str, int len) 
-{
-    static const unsigned int FNV1A_PRIME = 0x811c9dc5 ;
-
-    unsigned int hash = 0;
-    for (int i = 0; i < len; i++) {
-        hash *= FNV1A_PRIME; 
-        hash ^= str[i];
-    }
-
-    return hash;
-}
-
 struct type type_init(enum type_tag tag)
 {
     struct type type = {
