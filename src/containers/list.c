@@ -5,14 +5,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-const int DEFAULT_CAPACITY = 8;
+const int DYNARRAY_DEFAULT_CAPACITY = 8;
 
 struct dynarray dynarray_init(int type_size, pfn_list_destructor destructor)
 {
     struct dynarray array = {
         .bytes = NULL,
         .size = 0,
-        .capacity = DEFAULT_CAPACITY,
+        .capacity = DYNARRAY_DEFAULT_CAPACITY,
         .type_size = type_size,
         .destructor = destructor,
     };
