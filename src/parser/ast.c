@@ -12,15 +12,21 @@ const char *ast_tag_tostring[] = {
     FOREACH_AST_NODE(GEN_NODE_STRING) 
 };
 
+static void ast_destructor(void *ptr)
+{
+    ast_deinit(*(struct ast_node**)ptr);
+}
+
 static char *ast_sprintf(char *buffer, struct ast_node *node)
 {
     buffer += sprintf(buffer,
         "{\"tag\":\"%s\",\"string\":\"%s\",\"number\":%d,\"source_idx\":%d,\"children\":[",
         ast_tag_tostring[node->tag], node->string, node->number, node->source_index);
     
-    for (int i = 0; i < node->child_count; i++) {
-        buffer = ast_sprintf(buffer, node->child[i]);
-        if (i < node->child_count - 1) {
+    for (int i = 0; i < node->children.size; i++) {
+        struct ast_node *child = *(struct ast_node **)dynarray_get(&node->children, i);
+        buffer = ast_sprintf(buffer, child);
+        if (i < node->children.size - 1) {
             buffer += sprintf(buffer, ",");
         }
     }
@@ -40,9 +46,7 @@ struct ast_node *ast_init(void)
 
     *node = (struct ast_node) {
         .number = 0,
-        .child = NULL,
-        .child_count = 0,
-        .child_capacity = 8,
+        .children = dynarray_init(sizeof(struct ast_node *), ast_destructor),
     };
 
     memset(&node->string[0], '\0', AST_STRING_LEN);
@@ -53,38 +57,8 @@ struct ast_node *ast_init(void)
 void ast_deinit(struct ast_node *node)
 {
     assert(node != NULL);
-    for (int i = 0; i < node->child_count; i++) {
-        ast_deinit(node->child[i]);
-    }
-    if (node->child != NULL) {
-        free(node->child);
-    }
+    dynarray_deinit(&node->children);
     free(node);
-}
-
-void ast_push_child(struct ast_node *parent, struct ast_node *child)
-{
-    assert(parent != NULL);
-    assert(child != NULL);
-
-    if (parent->child_count == 0) {
-        parent->child = malloc(parent->child_capacity * sizeof(struct ast_node *));
-        if (parent->child == NULL) {
-            fprintf(stderr, "OOM\n");
-            return;
-        }
-    }
-
-    if (parent->child_count >= parent->child_capacity) {
-        parent->child_capacity *= 2;
-        parent->child = realloc(parent->child, parent->child_capacity * sizeof(struct ast_node *));
-        if (parent->child == NULL) {
-            fprintf(stderr, "OOM\n");
-            return;
-        }
-    }
-
-    parent->child[parent->child_count++] = child;
 }
 
 void ast_dump(struct ast_node *root)

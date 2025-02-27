@@ -137,7 +137,7 @@ struct ast_node *parse_block(struct parser *parser)
         if (stmt == NULL) {
             goto FREE_NODE;
         }
-        ast_push_child(node, stmt);
+        dynarray_push(&node->children, &stmt);
         
         // Allow blocks to not have semicolon after them
         if (stmt->tag != AST_BLOCK && !parser_expect(parser, TOKEN_SEMICOLON, NULL)) {
@@ -193,8 +193,8 @@ struct ast_node *parse_var_decl(struct parser *parser)
         goto FREE_TYPE;
     }
 
-    ast_push_child(node, type);
-    ast_push_child(node, expr);
+    dynarray_push(&node->children, &type);
+    dynarray_push(&node->children, &expr);
 
     return node;
 
@@ -282,7 +282,7 @@ struct ast_node *parser_parse(struct parser *parser)
         if (top_level == NULL) {
             goto FREE_NODE;
         }
-        ast_push_child(node, top_level);
+        dynarray_push(&node->children, &top_level);
     }
 
     return node;

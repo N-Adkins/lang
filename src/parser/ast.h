@@ -2,6 +2,7 @@
 #define LANG_PARSER_AST_H
 
 #include "error.h"
+#include "../containers/list.h"
 
 #define AST_STRING_LEN 128
 
@@ -25,18 +26,15 @@ extern const char *ast_tag_tostring[];
 
 struct ast_node {
     char string[AST_STRING_LEN];
+    struct dynarray children;
     const struct source_info *source;
-    struct ast_node **child;
     int number;
-    int child_count;
-    int child_capacity;
     int source_index;
     enum ast_tag tag;
 };
 
 struct ast_node *ast_init(void);
 void ast_deinit(struct ast_node *node);
-void ast_push_child(struct ast_node *parent, struct ast_node *child);
 void ast_dump(struct ast_node *root);
 
 #endif
