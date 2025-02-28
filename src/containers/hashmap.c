@@ -1,18 +1,22 @@
 #include "hashmap.h"
 
+#include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
 const int HASHMAP_DEFAULT_CAPACITY = 16;
 
-#define BUCKET_SIZE(type_size) (((sizeof(int) + sizeof(char *) + type_size) + 7) & ~7);
+#define BUCKET_SIZE(type_size) (((sizeof(void*)*2 + type_size) + 7) & ~7)
 #define BUCKET_KEY_LEN(ptr) ((int *)(char *)ptr)
-#define BUCKET_KEY(ptr) ((char **)((char *)ptr + sizeof(int)))
-#define BUCKET_VALUE(ptr) ((void *)((char *)ptr + sizeof(int) + sizeof(char *)))
+#define BUCKET_KEY(ptr) ((char **)((char *)ptr + sizeof(void*)))
+#define BUCKET_VALUE(ptr) ((void *)((char *)ptr + sizeof(void*)*2))
 
 static unsigned int fnv1a_hash(const char *str, int len) 
 {
+    assert(str != NULL);
+    assert(len > 0);
+
     static const unsigned int FNV1A_PRIME = 0x811C9DC5;
 
     unsigned int hash = 0;
@@ -26,6 +30,10 @@ static unsigned int fnv1a_hash(const char *str, int len)
 
 static void *bucket_init(int type_size, const char *key, int key_len, const void *value)
 {
+    assert(key != NULL);
+    assert(key_len > 0);
+    assert(value != NULL);
+
     const int bucket_size = BUCKET_SIZE(type_size);
 
     void *bucket = malloc(bucket_size);
@@ -40,23 +48,57 @@ static void *bucket_init(int type_size, const char *key, int key_len, const void
         fprintf(stderr, "OOM\n");
         return NULL;
     }
-    memcpy(BUCKET_KEY(bucket), key, key_len);
-    *BUCKET_KEY(bucket)[key_len] = '\0';
+    memcpy(*BUCKET_KEY(bucket), key, key_len);
+    (*BUCKET_KEY(bucket))[key_len] = '\0';
     memcpy(BUCKET_VALUE(bucket), value, type_size);
 
     return bucket;
 }
 
-void bucket_deinit(void *bucket)
+static void bucket_deinit(void *bucket)
 {
+    assert(bucket != NULL);
+
     free(*BUCKET_KEY(bucket));
     free(bucket);
+}
+
+static void hashmap_rehash(struct hashmap *map)
+{
+    assert(map != NULL);
+    assert(map->size * 2 >= map->capacity);
+
+    const int old_capacity = map->capacity;
+    map->capacity *= 2;
+
+    void **new_buckets = calloc(map->capacity, sizeof(void*));
+
+    for (int i = 0; i < old_capacity; i++) {
+        void *bucket = map->buckets[i];
+        if (bucket == NULL) {
+            continue;
+        }
+        
+        const unsigned int hash = fnv1a_hash(*BUCKET_KEY(bucket), *BUCKET_KEY_LEN(bucket));
+        int j = 0;
+        void **new_bucket = NULL;
+        do {
+            const int index = (hash + j * j) % map->capacity;
+            j++;
+            new_bucket = &new_buckets[index];
+        } while(*new_bucket != NULL);
+
+        *new_bucket = bucket;
+    }
+
+    free(map->buckets);
+    map->buckets = new_buckets;
 }
 
 struct hashmap hashmap_init(int type_size, pfn_hashmap_destructor destructor)
 {
     struct hashmap map = {
-        .bytes = NULL,
+        .buckets = NULL,
         .size = 0,
         .capacity = HASHMAP_DEFAULT_CAPACITY,
         .type_size = type_size,
@@ -68,37 +110,53 @@ struct hashmap hashmap_init(int type_size, pfn_hashmap_destructor destructor)
 
 void hashmap_deinit(struct hashmap *map)
 {
-    const int bucket_size = BUCKET_SIZE(map->size);
-    for (void **bucket = map->bytes; bucket < map->bytes + map->capacity * bucket_size; bucket += bucket_size) {
-        map->destructor(BUCKET_VALUE(*bucket));
-        free(*bucket);
+    assert(map != NULL);
+
+    for (int i = 0; i < map->capacity; i++) {
+        void *bucket = map->buckets[i];
+        if (bucket == NULL) {
+            continue;
+        }
+
+        if (map->destructor != NULL) {
+            map->destructor(BUCKET_VALUE(bucket));
+        }
+        bucket_deinit(bucket);
     }
-    free(map->bytes);
+    free(map->buckets);
 }
 
 void hashmap_insert(struct hashmap *map, const char *key, int key_len, const void *data)
 {
-    const int bucket_size = BUCKET_SIZE(map->type_size);
+    assert(map != NULL);
+    assert(key != NULL);
+    assert(key_len > 0);
+    assert(data != NULL);
 
-    if (map->bytes == NULL) {
-        map->bytes = calloc(map->capacity, bucket_size);
-        if (map->bytes == NULL) {
+    if (map->buckets == NULL) {
+        map->buckets = calloc(map->capacity, sizeof(void*));
+        if (map->buckets == NULL) {
             fprintf(stderr, "OOM\n");
             return;
         }
     }
     
-    const unsigned int hash = fnv1a_hash(key, key_len) % map->capacity;
+    if (map->size * 2 >= map->capacity) {
+        hashmap_rehash(map);
+    }
+    
+    const unsigned int hash = fnv1a_hash(key, key_len);
     int i = 0;
     void **bucket = NULL;
     do {
-        const int index = hash + i * i;
+        const int index = (hash + i * i) % map->capacity;
         i++;
-        bucket = &map->bytes[index * bucket_size];
+        bucket = &map->buckets[index];
     } while(*bucket != NULL && strcmp(*BUCKET_KEY(*bucket), key) != 0);
 
     if (*bucket == NULL) {
         *bucket = bucket_init(map->type_size, key, key_len, data);
+        map->size++;
     } else { // new value
         if (map->destructor != NULL) {
             map->destructor(BUCKET_VALUE(*bucket));
@@ -109,15 +167,17 @@ void hashmap_insert(struct hashmap *map, const char *key, int key_len, const voi
 
 void hashmap_delete(struct hashmap *map, const char *key, int key_len)
 {
-    const int bucket_size = BUCKET_SIZE(map->type_size);
+    assert(map != NULL);
+    assert(key != NULL);
+    assert(key_len > 0);
 
-    const unsigned int hash = fnv1a_hash(key, key_len) % map->capacity;
+    const unsigned int hash = fnv1a_hash(key, key_len);
     int i = 0;
     void **bucket = NULL;
     do {
-        const int index = hash + i * i;
+        const int index = (hash + i * i) % map->capacity;
         i++;
-        bucket = &map->bytes[index * bucket_size];
+        bucket = &map->buckets[index];
         if (strcmp(*BUCKET_KEY(*bucket), key) == 0) {
             break;
         }
@@ -130,27 +190,35 @@ void hashmap_delete(struct hashmap *map, const char *key, int key_len)
         }
         bucket_deinit(*bucket);
         *bucket = NULL;
+        map->size--;
     }
 }
 
 void *hashmap_get(struct hashmap *map, const char *key, int key_len)
 {
-    const int bucket_size = BUCKET_SIZE(map->type_size);
+    assert(map != NULL);
+    assert(key != NULL);
+    assert(key_len > 0);
 
-    const unsigned int hash = fnv1a_hash(key, key_len) % map->capacity;
+    if (map->buckets == NULL) {
+        return NULL;
+    }
+
+    const unsigned int hash = fnv1a_hash(key, key_len);
     int i = 0;
-    void **bucket = NULL;
+    void *bucket = NULL;
     do {
-        const int index = hash + i * i;
+        const int index = (hash + i * i) % map->capacity;
         i++;
-        bucket = &map->bytes[index * bucket_size];
-        if (strcmp(*BUCKET_KEY(*bucket), key) == 0) {
+        bucket = map->buckets[index];
+        if (bucket != NULL 
+            && strcmp(*BUCKET_KEY(bucket), key) == 0) {
             break;
         }
-    } while(*bucket != NULL);
+    } while(bucket != NULL);
     
     // Key exists
-    if (*bucket != NULL) {
+    if (bucket != NULL) {
         return BUCKET_VALUE(bucket);
     } else {
         return NULL;

@@ -2,7 +2,9 @@
 #include "lexer.h"
 #include "parser/ast.h"
 #include "parser/parser.h"
+#include "containers/hashmap.h"
 
+#include <stdio.h>
 #include <string.h>
 
 int main(void)
@@ -33,7 +35,7 @@ int main(void)
     if (!error_ctx_isempty(&err_ctx)) {
         goto DUMP_ERRORS;
     }
-
+    
     error_ctx_deinit(&err_ctx);
     
     return 0;

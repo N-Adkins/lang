@@ -5,7 +5,7 @@ typedef void (*pfn_hashmap_destructor)(void *ptr);
 
 struct hashmap {
     pfn_hashmap_destructor destructor;
-    void **bytes;
+    void **buckets;
     int size;
     int capacity;
     int type_size;
