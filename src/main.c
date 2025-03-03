@@ -2,7 +2,6 @@
 #include "lexer.h"
 #include "parser/ast.h"
 #include "parser/parser.h"
-#include "containers/hashmap.h"
 
 #include <stdio.h>
 #include <string.h>
