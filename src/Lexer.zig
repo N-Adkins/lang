@@ -4,10 +4,17 @@ const Source = ErrorContext.Source;
 const Self = @This();
 
 pub const Token = struct {
+    pub const KeywordMap = std.StaticStringMap(Kind).initComptime(.{
+        .{ "var", .var_keyword },
+        .{ "func", .func_keyword },
+    });
+
     pub const Kind = enum {
         eof,
         identifier,
         int_literal,
+        var_keyword,
+        func_keyword,
         left_curly,
         right_curly,
         left_paren,
@@ -115,7 +122,11 @@ pub fn next(self: *Self) !Token {
             self.index += 1;
             switch (self.source.text[self.index]) {
                 'a'...'z', 'A'...'Z', '0'...'9', '_' => continue :state .identifier,
-                else => {},
+                else => {
+                    if (Token.KeywordMap.get(self.source.text[result.start..self.index])) |keyword| {
+                        result.kind = keyword;
+                    }
+                },
             }
         },
         .int_literal => {
@@ -126,7 +137,7 @@ pub fn next(self: *Self) !Token {
             }
         },
         .invalid => {
-            try self.err_ctx.push(self.source, result.start, "Found invalid lexeme during tokenization: '{c}'", .{self.source.text[self.index]});
+            try self.err_ctx.push(self.source, result.start, "Found invalid lexeme: '{c}'", .{self.source.text[self.index]});
             return error.InvalidLexeme;
         },
     }
