@@ -47,6 +47,7 @@ fn parseTopLevel(self: *Self) !*Ast.Node {
 fn parseFuncDecl(self: *Self) !*Ast.Node {
     try self.expect(.func_keyword);
     const ident = self.expect(.identifier);
+    _ = ident;
     try self.expect(.left_paren);
     try self.expect(.right_paren);
 }

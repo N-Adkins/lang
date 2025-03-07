@@ -2,6 +2,7 @@ const std = @import("std");
 const ErrorContext = @import("ErrorContext.zig");
 const Source = ErrorContext.Source;
 const Lexer = @import("Lexer.zig");
+const Parser = @import("Parser.zig");
 
 pub fn main() !void {
     var debug_allocator = std.heap.DebugAllocator(.{}){};
@@ -24,10 +25,7 @@ pub fn main() !void {
         .source = &source,
         .err_ctx = &err_ctx,
     };
-
-    var token = try lexer.next();
-    while (token.kind != .eof) {
-        std.debug.print("Token {{ {}, \"{s}\" }}\n", .{ token.kind, source.text[token.start..token.end] });
-        token = try lexer.next();
-    }
+    
+    var parser: Parser = .init(allocator, &err_ctx, &source, &lexer);
+    defer parser.deinit();
 }
