@@ -35,4 +35,14 @@ pub fn build(b: *std.Build) void {
 
     const test_step = b.step("test", "Run unit tests");
     test_step.dependOn(&run_exe_unit_tests.step);
+
+    const exe_check = b.addExecutable(.{
+        .name = "lang",
+        .root_module = exe_mod,
+        .use_llvm = false,
+        .use_lld = false,
+    });
+
+    const check = b.step("check", "Check if lang compiles");
+    check.dependOn(&exe_check.step);
 }
