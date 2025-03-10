@@ -25,7 +25,7 @@ pub fn main() !void {
         .source = &source,
         .err_ctx = &err_ctx,
     };
-    
+
     var parser: Parser = .init(allocator, &err_ctx, &source, &lexer);
     defer parser.deinit();
 }
