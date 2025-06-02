@@ -12,6 +12,9 @@ struct Error {
     Error(const std::string& message, std::span<Token> tokens)
         : message(message), tokens(tokens) {}
 
+    Error(const std::string& message, int index)
+        : message(message), index(index) {}
+
     std::string message;
     std::span<Token> tokens;
     int index = -1; // This is only used for lexer errors, basically

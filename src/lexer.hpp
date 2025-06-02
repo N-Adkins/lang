@@ -3,7 +3,6 @@
 #include <functional>
 #include <span>
 #include <string_view>
-#include <unordered_map>
 #include <vector>
 #include "context.hpp"
 
@@ -23,6 +22,11 @@ struct Token {
         RCurly,
         LParen,
         RParen,
+        Plus,
+        Minus,
+        Asterisk,
+        Slash,
+        Equals,
     };
 
     Kind kind;
@@ -37,8 +41,9 @@ public:
     Lexer(CompileContext& ctx)
         : ctx(ctx) {}
 
-    Token get_token(size_t token_idx);
+    Token get_token(size_t token_idx) const;
     std::span<Token> span_tokens(size_t start, size_t end);
+    std::span<Token> all_tokens();
     void tokenize();
 
 private:

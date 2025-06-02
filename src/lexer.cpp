@@ -1,5 +1,7 @@
 #include "lexer.hpp"
 
+#include <format>
+
 namespace Lang {
 
 static const std::unordered_map<std::string_view, Token::Kind> KEYWORD_MAP = {
@@ -27,7 +29,7 @@ std::string_view Token::to_string(CompileContext& ctx) {
     return std::string_view{ src.begin() + start, src.begin() + end };
 }
 
-Token Lexer::get_token(size_t token_idx) {
+Token Lexer::get_token(size_t token_idx) const {
     return tokens.at(token_idx);
 }
 
@@ -35,8 +37,23 @@ std::span<Token> Lexer::span_tokens(size_t start, size_t end) {
     return std::span<Token>(tokens).subspan(start, end);
 }
 
-void Lexer::tokenize() {
+std::span<Token> Lexer::all_tokens() {
+    return tokens;
+}
 
+void Lexer::tokenize() {
+    const size_t source_len = ctx.get_source().length();
+    while (index < source_len) {
+        next_while(is_whitespace);
+        const char current = peek();
+        if (is_alpha(current) || current == '_') {
+            ident();
+        } else if (is_number(current)) {
+            int_literal();
+        } else {
+            special();
+        }
+    }
 }
 
 void Lexer::ident() {
@@ -64,7 +81,34 @@ void Lexer::int_literal() {
 }
 
 void Lexer::special() {
-
+    char current = next();
+    const size_t start = index;
+    Token::Kind kind;
+    switch (current) {
+    case ';': kind = Token::Kind::Semicolon; break;
+    case ':': kind = Token::Kind::Colon; break;
+    case ',': kind = Token::Kind::Comma; break;
+    case '.': kind = Token::Kind::Period; break;
+    case '{': kind = Token::Kind::LCurly; break;
+    case '}': kind = Token::Kind::RCurly; break;
+    case '(': kind = Token::Kind::LParen; break;
+    case ')': kind = Token::Kind::RParen; break;
+    case '+': kind = Token::Kind::Plus; break;
+    case '-': kind = Token::Kind::Minus; break;
+    case '*': kind = Token::Kind::Asterisk; break;
+    case '/': kind = Token::Kind::Slash; break;
+    case '=': kind = Token::Kind::Equals; break;
+    default:
+        ctx.push_error(Error(std::format("Found invalid character '{}'", current), start));
+        return;
+    }
+    const size_t end = index;
+    const Token token = {
+        .kind = kind,
+        .start = start,
+        .end = end,
+    };
+    tokens.push_back(token);
 }
 
 char Lexer::peek() const {
