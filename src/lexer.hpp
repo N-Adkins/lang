@@ -1,7 +1,9 @@
 #pragma once
 
+#include <functional>
 #include <span>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 #include "context.hpp"
 
@@ -24,8 +26,8 @@ struct Token {
     };
 
     Kind kind;
-    int start;
-    int end;
+    size_t start;
+    size_t end;
 
     std::string_view to_string(CompileContext& ctx);
 };
@@ -35,15 +37,23 @@ public:
     Lexer(CompileContext& ctx)
         : ctx(ctx) {}
 
+    Token get_token(size_t token_idx);
+    std::span<Token> span_tokens(size_t start, size_t end);
     void tokenize();
-    Token get_token(int index);
-    std::span<Token> span_tokens(int start, int end);
 
 private:
-    
+    void ident();
+    void int_literal();
+    void special();
+
+    char peek() const;
+    char next();
+
+    void next_while(std::function<bool(char)> func);
 
     std::vector<Token> tokens;
     CompileContext& ctx;
+    size_t index = 0;
 };
 
 } // namespace Lang 
